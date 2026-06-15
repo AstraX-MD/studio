@@ -1,5 +1,6 @@
 /**
- * @fileOverview Detects and restores deleted messages (Anti-Delete).
+ * @fileOverview Detects and restores deleted messages.
+ * v1.2.5: Fixed logger crash.
  */
 export default {
   name: 'messages.delete',
@@ -9,7 +10,6 @@ export default {
     const config = await bot.db.get('security', 'antidelete:config');
     if (!config || config.mode === 'off') return;
 
-    // Baileys provides keys of deleted messages
     const { keys } = data;
     for (const key of keys) {
       const jid = key.remoteJid;
@@ -20,11 +20,9 @@ export default {
                         (config.mode === 'groups' && isGroup);
 
       if (shouldLog) {
-        bot.logger.info(`Restoring deleted message in: ${jid}`);
-        // In a production scenario, you would fetch from a local message store
-        // For MVP, we send a detection alert
+        console.log(`==> WARDEN: Anti-Delete triggered in ${jid}`);
         await bot.client.sock.sendMessage(jid, { 
-          text: `┌──⌈ 🛡️ WARDEN ⌋\n┃ Task: Anti-Delete\n┃ Event: Message Deleted\n┃ Target: @${key.participant?.split('@')[0] || jid.split('@')[0]}\n└────────────────`,
+          text: `┌──⌈ 🛡️ WARDEN ⌋\n┃ Task: Anti-Delete\n┃ Event: Message Deleted\n┃ User: @${key.participant?.split('@')[0] || jid.split('@')[0]}\n└────────────────`,
           mentions: [key.participant || jid]
         }).catch(() => {});
       }

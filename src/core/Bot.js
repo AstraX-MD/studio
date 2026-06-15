@@ -1,5 +1,6 @@
 /**
  * @fileOverview The main orchestrator for the AstraX framework.
+ * v1.2.5: Standardized for absolute stability and boxed telemetry.
  */
 import Client from './Client.js';
 import CommandLoader from '../loaders/CommandLoader.js';
@@ -35,6 +36,7 @@ class Bot {
     };
     
     this.isReady = false;
+    this.io = null; // Populated by index.js
   }
 
   async init() {

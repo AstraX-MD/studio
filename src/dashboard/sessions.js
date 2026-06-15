@@ -15,7 +15,7 @@ export default class SessionDashboard {
         id: this.bot.config.sessionName,
         status: this.bot.isReady ? 'online' : 'connecting',
         user: this.bot.client.sock?.user?.id || 'Unknown',
-        platform: 'Ubuntu (Linux)',
+        platform: 'Cloud Node',
         connectedAt: new Date().toISOString()
       }
     ];
@@ -25,7 +25,7 @@ export default class SessionDashboard {
    * Terminates a specific session.
    */
   async terminateSession(sessionId) {
-    this.bot.logger.warn(`Dashboard requested termination of session: ${sessionId}`);
-    // Logic to disconnect the specific socket
+    console.log(`==> DASHBOARD: Session termination requested: ${sessionId}`);
+    // Terminate logic
   }
 }

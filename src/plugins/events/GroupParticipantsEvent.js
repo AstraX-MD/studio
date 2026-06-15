@@ -1,5 +1,6 @@
 /**
- * @fileOverview Handles group participant changes (Join/Leave/Promote).
+ * @fileOverview Handles group participant changes.
+ * v1.2.5: Removed legacy logger to prevent crashes.
  */
 export default {
   name: 'group-participants.update',
@@ -7,8 +8,8 @@ export default {
   enabled: true,
   async execute(bot, data) {
     const { id, participants, action } = data;
-    bot.logger.info(`Group Event: [${action}] in ${id} for ${participants.length} users`);
+    console.log(`==> GROUP: [${action}] in ${id} for ${participants.length} users`);
     
-    // Logic for Welcome/Goodbye would be called here via Automation Service
+    // Automation service calls go here
   }
 };

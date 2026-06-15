@@ -14,7 +14,7 @@ export default {
     const status = `┌──⌈ ${botName.toUpperCase()} STATUS ⌋
 ┃ Mode: Online
 ┃ System: Stable
-┃ Version: 2.4.0
+┃ Version: 1.2.5
 ┃ Status: Active
 └────────────────`;
     await ctx.reply(status);

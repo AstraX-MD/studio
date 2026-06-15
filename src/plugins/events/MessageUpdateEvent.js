@@ -1,5 +1,6 @@
 /**
- * @fileOverview Detects and logs message edits (Anti-Edit).
+ * @fileOverview Detects and logs message edits.
+ * v1.2.5: Fixed logger crash.
  */
 export default {
   name: 'messages.update',
@@ -19,6 +20,7 @@ export default {
                           (config.mode === 'groups' && isGroup);
 
         if (shouldLog) {
+          console.log(`==> WARDEN: Anti-Edit triggered in ${jid}`);
           await bot.client.sock.sendMessage(jid, { 
             text: `┌──⌈ 🛡️ WARDEN ⌋\n┃ Task: Anti-Edit\n┃ Event: Message Modified\n┃ User: @${update.key.participant?.split('@')[0] || jid.split('@')[0]}\n└────────────────`,
             mentions: [update.key.participant || jid]

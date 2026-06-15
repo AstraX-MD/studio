@@ -1,6 +1,6 @@
 /**
  * @fileOverview Main entry point for AstraX Enterprise.
- * Optimized for Cloud Hosting with Clean Telemetry.
+ * v1.2.5: Optimized for Cloud Hosting with Clean Telemetry.
  */
 import 'dotenv/config';
 import express from 'express';
@@ -102,7 +102,7 @@ setInterval(async () => {
 async function start() {
   httpServer.listen(PORT, () => {
     console.log(`\n==> CONSOLE: Live on port ${PORT}`);
-    console.log(`==> PROJECT: AstraX Enterprise v2.4.3`);
+    console.log(`==> PROJECT: AstraX Enterprise v1.2.5`);
   });
 
   try {

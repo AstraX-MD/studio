@@ -1,5 +1,5 @@
 /**
- * @fileOverview Baileys socket wrapper with v1.2.5 Owner Resolution.
+ * @fileOverview Baileys socket wrapper with v1.2.5 Absolute Stability.
  */
 import makeWASocket, { 
   useMultiFileAuthState, 
@@ -23,6 +23,7 @@ class Client {
     const sessionDir = path.resolve('./sessions', this.sessionId);
     if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
 
+    // Cloud Session Injection
     const cloudSession = process.env.SESSION_ID;
     if (cloudSession && cloudSession.startsWith('ASTRAX~')) {
       try {
@@ -30,7 +31,9 @@ class Client {
         const credsData = Buffer.from(base64Data, 'base64').toString('utf-8');
         fs.writeFileSync(path.join(sessionDir, 'creds.json'), credsData);
         console.log(`==> AUTH: Session ID injection successful.`);
-      } catch (e) {}
+      } catch (e) {
+        console.log(`==> AUTH: Injection failed - ${e.message}`);
+      }
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
@@ -68,6 +71,7 @@ class Client {
         const myNum = this.sock.user.id.split(':')[0];
         this.bot.isReady = true;
         
+        // Auto-resolve Owner
         if (!this.bot.config.owners.includes(myNum)) {
           this.bot.config.owners.push(myNum);
         }
