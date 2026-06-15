@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview Manages all Baileys socket events.
  */
@@ -19,7 +18,11 @@ class EventHandler {
     for (const [eventName, eventData] of Object.entries(events)) {
       const plugin = this.bot.events.get(eventName);
       if (plugin && typeof plugin.execute === 'function') {
-        plugin.execute(this.bot, eventData);
+        try {
+          plugin.execute(this.bot, eventData);
+        } catch (e) {
+          console.log(`==> EVENT ERROR: [${eventName}] failed: ${e.message}`);
+        }
       }
     }
   }
