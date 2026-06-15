@@ -1,5 +1,5 @@
 /**
- * @fileOverview In-memory RAM storage. Volatile fallback to prevent crashes.
+ * @fileOverview In-memory RAM storage. Volatile fallback.
  */
 export default class RamProvider {
   constructor(bot) {
@@ -8,7 +8,7 @@ export default class RamProvider {
   }
 
   async init() {
-    console.log('==> DATABASE: Mode [RAM] active. Data will NOT persist.');
+    console.log('==> DATABASE: Mode [RAM] active (No persistence)');
   }
 
   _getKey(coll, key) {

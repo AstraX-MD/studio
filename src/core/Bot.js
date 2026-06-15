@@ -39,13 +39,12 @@ class Bot {
 
   async init() {
     console.log(`\n┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋`);
-    console.log(`┃ Version: 2.4.5-STABLE`);
+    console.log(`┃ Version: 1.2.5-STABLE`);
     console.log(`┃ Status: INITIALIZING...`);
     console.log(`└─────────────────────────`);
     
     try {
       await this.db.init();
-      await this._checkExpiration();
 
       await CommandLoader.load(this);
       await EventLoader.load(this);
@@ -54,7 +53,14 @@ class Bot {
       await this.client.connect();
       
       this.isReady = true;
-      console.log(`\n==> CONSOLE: System ready for interactions.\n`);
+      
+      const prefix = await this.managers.settings.get('core', 'prefix') || '!';
+      console.log(`\n┌──⌈ ⚙️ SYSTEM READY ⌋`);
+      console.log(`┃ Prefix: [ ${prefix} ]`);
+      console.log(`┃ Modules: ${this.commands.size} Active`);
+      console.log(`┃ Events: ${this.events.size} Active`);
+      console.log(`┃ Status: LISTENING...`);
+      console.log(`└─────────────────────\n`);
     } catch (error) {
       console.log(`\n==> CRITICAL: Boot sequence failed: ${error.message}\n`);
     }
@@ -76,28 +82,6 @@ class Bot {
       });
     }
     return manifest;
-  }
-
-  async _checkExpiration() {
-    const expireDays = parseInt(process.env.EXPIRE_DAYS);
-    if (!expireDays) return;
-
-    let deployDate = await this.db.get('core', 'deployment_date');
-    if (!deployDate) {
-      deployDate = Date.now();
-      await this.db.set('core', 'deployment_date', deployDate);
-    }
-
-    const expiryTime = deployDate + (expireDays * 24 * 60 * 60 * 1000);
-    const now = Date.now();
-
-    if (now > expiryTime) {
-      console.log('\n==> CRITICAL: DEPLOYMENT EXPIRED');
-      process.exit(1);
-    }
-
-    const remainingDays = Math.ceil((expiryTime - now) / (1000 * 60 * 60 * 24));
-    console.log(`==> SUBSCRIPTION: Active (${remainingDays} days left)`);
   }
 }
 

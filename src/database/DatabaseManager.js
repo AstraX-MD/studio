@@ -1,6 +1,6 @@
 /**
  * @fileOverview Orchestrates database operations with MongoDB priority and JSON/RAM fallback.
- * Fixed: Removed bot.logger dependency to prevent boot failures.
+ * Fixed: Removed all bot.logger references to prevent boot failures.
  */
 export default class DatabaseManager {
   constructor(bot) {
@@ -10,23 +10,18 @@ export default class DatabaseManager {
   }
 
   /**
-   * Initializes the database. Tries Mongo -> JSON -> RAM.
+   * Initializes the database safely.
    */
   async init() {
-    console.log(`\n==> DATABASE: Initializing [${this.activeProviderName.toUpperCase()}] Layer...`);
-    
     try {
       if (this.activeProviderName === 'mongodb' && !process.env.MONGODB_URL) {
-        throw new Error('MONGODB_URL missing in environment.');
+        throw new Error('MONGODB_URL missing');
       }
-      
       await this._loadProvider(this.activeProviderName);
     } catch (error) {
-      console.log(`==> DATABASE: Primary [${this.activeProviderName}] failed. Falling back...`);
       try {
         await this._loadProvider('json');
       } catch (e) {
-        console.log('==> DATABASE: Falling back to RAM mode...');
         await this._loadProvider('ram');
       }
     }
@@ -39,27 +34,31 @@ export default class DatabaseManager {
     this.provider = new Provider(this.bot);
     await this.provider.init();
     this.activeProviderName = name;
-    console.log(`==> DATABASE: Status: ACTIVE [${name.toUpperCase()}]\n`);
+    console.log(`==> DATABASE: Active Layer [${name.toUpperCase()}]`);
   }
 
-  // Unified API
   async get(collection, key) {
+    if (!this.provider) return null;
     return this.provider.get(collection, key);
   }
 
   async set(collection, key, value) {
+    if (!this.provider) return;
     return this.provider.set(collection, key, value);
   }
 
   async delete(collection, key) {
+    if (!this.provider) return;
     return this.provider.delete(collection, key);
   }
 
   async has(collection, key) {
+    if (!this.provider) return false;
     return this.provider.has(collection, key);
   }
 
   async all(collection) {
+    if (!this.provider) return {};
     return this.provider.all(collection);
   }
 }

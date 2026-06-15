@@ -10,7 +10,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
 const plugins = [
-  { id: '1', name: 'Economy Pro', author: 'AstraCore', status: 'Installed', version: '2.4.0', type: 'Core', desc: 'Complete banking, gambling and XP system with cloud database support.', aliases: ['eco', 'money', 'bal'] },
+  { id: '1', name: 'Economy Pro', author: 'AstraCore', status: 'Installed', version: '1.2.5', type: 'Core', desc: 'Complete banking, gambling and XP system with cloud database support.', aliases: ['eco', 'money', 'bal'] },
   { id: '2', name: 'AI Image Forge', author: 'AstraLabs', status: 'Active', version: '1.2.1', type: 'Extension', desc: 'Integrated DALL-E 3 and Stable Diffusion generator for user commands.', aliases: ['imagine', 'dalle', 'sdxl'] },
   { id: '3', name: 'YouTube Hydra', author: 'HydraDL', status: 'Update', version: '4.0.0', type: 'Downloader', desc: 'High-speed audio and video retrieval with custom quality selection.', aliases: ['play', 'ytv', 'song'] },
   { id: '4', name: 'Warden Guard', author: 'AstraCore', status: 'Active', version: '5.2.0', type: 'Security', desc: 'Advanced moderation suite including anti-link and automated raid protection.', aliases: ['warden', 'antilink', 'block'] },
@@ -25,16 +25,24 @@ export default function PluginsPage() {
 
   const filteredPlugins = plugins.filter(plugin => {
     const query = searchQuery.toLowerCase().trim();
-    if (!query) return activeTab === 'all' || plugin.type.toLowerCase() === activeTab.toLowerCase();
+    
+    // Type Filter
+    const matchesTab = activeTab === 'all' || plugin.type.toLowerCase() === activeTab.toLowerCase();
+    if (!matchesTab) return false;
 
-    const matchesSearch = 
-      plugin.name.toLowerCase().includes(query) || 
-      plugin.desc.toLowerCase().includes(query) ||
-      plugin.aliases?.some(a => a.toLowerCase().includes(query));
+    // Search Query Filter
+    if (!query) return true;
+
+    const matchesName = plugin.name.toLowerCase().includes(query);
+    const matchesDesc = plugin.desc.toLowerCase().includes(query);
+    const matchesAliases = plugin.aliases?.some(a => a.toLowerCase().includes(query));
       
-    const matchesTab = activeTab === 'all' || plugin.type.toLowerCase() === activeTab.toLowerCase()
-    return matchesSearch && matchesTab
+    return matchesName || matchesDesc || matchesAliases;
   })
+
+  const handleSearch = () => {
+    console.log('Search triggered for:', searchQuery);
+  };
 
   return (
     <div className="space-y-6 animate-in fade-in duration-500">
@@ -60,7 +68,7 @@ export default function PluginsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="secondary" className="h-11 px-6 font-headline" onClick={() => console.log('Searching...')}>Search</Button>
+          <Button variant="secondary" className="h-11 px-6 font-headline" onClick={handleSearch}>Search</Button>
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
           <TabsList className="bg-white/5 h-11 p-1">
