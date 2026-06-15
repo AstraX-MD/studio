@@ -1,6 +1,6 @@
 /**
  * @fileOverview Inbound message router with integrated Granular Automation & Security Hub.
- * Updated to support Anti-Media (Audio, Video, Voice, Poll, etc.) and Privacy filters.
+ * Updated to support global Bot Modes (Public/Private/Silent/Scoped).
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -10,7 +10,7 @@ class MessageHandler {
   constructor(bot) {
     this.bot = bot;
     this.commandHandler = new CommandHandler(bot);
-    this.spamTracker = new Map(); // { sender: { count: 0, last: timestamp } }
+    this.spamTracker = new Map();
   }
 
   async handle(msg) {
@@ -23,6 +23,24 @@ class MessageHandler {
 
     const ctx = new Context(this.bot, msg);
     
+    // 0. GLOBAL MODE CHECK
+    const modeConfig = await this.bot.db.get('core', 'mode:config') || { current: 'public', excluded: [] };
+    const userRole = await this.bot.managers.roles.getRole(ctx.sender, ctx.isGroup ? ctx.jid : null);
+    const isOwner = userRole >= 9;
+
+    // Apply exclusions first (If target is excluded, they are ignored regardless of mode)
+    if (modeConfig.excluded.includes(ctx.sender) || modeConfig.excluded.includes(ctx.jid)) {
+      if (!isOwner) return;
+    }
+
+    // Apply Mode Restrictions
+    if (!isOwner) {
+      if (modeConfig.current === 'private') return;
+      if (modeConfig.current === 'silent') return;
+      if (modeConfig.current === 'dm' && ctx.isGroup) return;
+      if (modeConfig.current === 'groups' && !ctx.isGroup) return;
+    }
+
     // 1. Security Check (Warden Suite)
     const isViolator = await this.applySecurity(ctx);
     if (isViolator) return;
@@ -52,16 +70,14 @@ class MessageHandler {
     const jid = ctx.jid;
     const userRole = await this.bot.managers.roles.getRole(sender, jid);
 
-    // Skip checks for Admins/Owners
     if (userRole >= 5) return false;
 
-    // 1. Anti-Spam (Flood Protection)
     const spamConfig = await this.bot.db.get('security', 'antispam:config');
     if (spamConfig?.mode === 'on' || (spamConfig?.mode === 'groups' && ctx.isGroup) || (spamConfig?.mode === 'dm' && !ctx.isGroup)) {
       const now = Date.now();
       const track = this.spamTracker.get(sender) || { count: 0, last: 0 };
       
-      if (now - track.last < 10000) { // 10s interval
+      if (now - track.last < 10000) {
         track.count++;
         if (track.count >= (spamConfig.threshold || 5)) {
           await this.executePunishment(ctx, spamConfig.action || 'mute', 'SPAM-FLOOD');
@@ -77,7 +93,6 @@ class MessageHandler {
 
     if (!ctx.isGroup) return false;
 
-    // Media & Message Content Filters
     const checkMedia = async (type, condition, reason) => {
       const config = await this.bot.db.get('security', `anti${type}:${jid}`);
       if (config?.mode === 'on' && condition) {
@@ -98,7 +113,6 @@ class MessageHandler {
     if (await checkMedia('location', ctx.msg.message?.locationMessage || ctx.msg.message?.liveLocationMessage, 'LOCATION-SHARE')) return true;
     if (await checkMedia('forward', ctx.msg.message?.contextInfo?.isForwarded, 'FORWARDED-MSG')) return true;
 
-    // Anti-Emoji
     const emojiConfig = await this.bot.db.get('security', `antiemoji:${jid}`);
     if (emojiConfig?.mode === 'on') {
       const emojis = ctx.text.match(/[\p{Emoji}]/gu) || [];
@@ -108,7 +122,6 @@ class MessageHandler {
       }
     }
 
-    // Anti-TagAll / Anti-GroupStatusMention
     const tagAllConfig = await this.bot.db.get('security', `antitagall:${jid}`) || await this.bot.db.get('security', `antigrpmention:${jid}`);
     if (tagAllConfig?.mode === 'on') {
       const mentions = ctx.msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
@@ -118,7 +131,6 @@ class MessageHandler {
       }
     }
 
-    // Anti-Toxic (AI Powered)
     const toxicConfig = await this.bot.db.get('security', `antitoxic:${jid}`);
     if (toxicConfig?.mode === 'on' && ctx.text.length > 5) {
       try {
@@ -130,7 +142,6 @@ class MessageHandler {
       } catch (e) {}
     }
 
-    // Anti-Word
     const wordConfig = await this.bot.db.get('security', `antiword:${jid}`);
     if (wordConfig?.mode === 'on' && wordConfig.words?.length > 0) {
       const hasBanned = wordConfig.words.some(w => ctx.text.toLowerCase().includes(w.toLowerCase()));
@@ -186,20 +197,15 @@ class MessageHandler {
         return false;
       };
 
-      // Check Privacy "Anti" filters for bot behavior
       const onlineConfig = await this.bot.db.get('security', 'antionline:config');
       const activeConfig = await this.bot.db.get('security', 'antiactive:config');
-      
-      // If Anti-Online/Active is ON, skip presence updates
       const skipPresence = onlineConfig?.mode === 'on' || activeConfig?.mode === 'on';
 
-      // Auto Read
       const readConfig = await this.bot.db.get('automation', 'read:config');
       if (checkActive(readConfig)) {
         await this.bot.client.sock.readMessages([ctx.msg.key]);
       }
 
-      // Auto React
       const reactConfig = await this.bot.db.get('automation', 'react:config');
       if (checkActive(reactConfig)) {
         const emojis = reactConfig.emojis || ['🔥'];
@@ -208,7 +214,6 @@ class MessageHandler {
       }
 
       if (!skipPresence) {
-        // Presence Automation (Typing)
         const typeConfig = await this.bot.db.get('automation', 'typing:config');
         if (checkActive(typeConfig)) {
           await this.bot.client.sock.sendPresenceUpdate('composing', jid);
@@ -216,7 +221,6 @@ class MessageHandler {
           await this.bot.client.sock.sendPresenceUpdate('paused', jid);
         }
 
-        // Presence Automation (Recording)
         const recConfig = await this.bot.db.get('automation', 'record:config');
         if (checkActive(recConfig)) {
           await this.bot.client.sock.sendPresenceUpdate('recording', jid);
@@ -225,7 +229,6 @@ class MessageHandler {
         }
       }
 
-      // Anti-ViewOnce Recovery
       const viewOnceConfig = await this.bot.db.get('security', 'antiviewonce:config');
       if (checkActive(viewOnceConfig) && (ctx.msg.message?.imageMessage?.viewOnce || ctx.msg.message?.videoMessage?.viewOnce)) {
           const cloned = JSON.parse(JSON.stringify(ctx.msg.message));
