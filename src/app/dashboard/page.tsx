@@ -1,3 +1,4 @@
+
 "use client"
 
 import { Card, CardContent, CardHeader, CardTitle, CardDescription } from "@/components/ui/card"
@@ -8,7 +9,10 @@ import {
   Zap, 
   ArrowUpRight, 
   ArrowDownRight,
-  RefreshCw
+  RefreshCw,
+  Cpu,
+  Globe,
+  Database
 } from "lucide-react"
 import { 
   BarChart, 
@@ -21,8 +25,9 @@ import {
   AreaChart,
   Area
 } from "recharts"
-import { ChartContainer, ChartTooltip, ChartTooltipContent } from "@/components/ui/chart"
 import { Button } from "@/components/ui/button"
+import { Progress } from "@/components/ui/progress"
+import { cn } from "@/lib/utils"
 
 const messageData = [
   { day: "Mon", messages: 2400 },
@@ -46,13 +51,13 @@ const protectionData = [
 
 export default function DashboardOverview() {
   return (
-    <div className="space-y-6">
+    <div className="space-y-6 animate-in fade-in slide-in-from-bottom-4 duration-700">
       <div className="flex items-end justify-between">
         <div className="space-y-1">
           <h2 className="text-3xl font-bold font-headline tracking-tight">System Console</h2>
           <p className="text-muted-foreground">Welcome back, Administrator. Your node is operating within optimal parameters.</p>
         </div>
-        <Button variant="outline" size="sm" className="h-9 gap-2 font-mono uppercase text-[10px] tracking-widest bg-white/5">
+        <Button variant="outline" size="sm" className="h-9 gap-2 font-mono uppercase text-[10px] tracking-widest bg-white/5 hover:bg-white/10">
           <RefreshCw className="w-3 h-3" />
           Refresh Stats
         </Button>
@@ -60,8 +65,8 @@ export default function DashboardOverview() {
 
       {/* KPI Cards */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Card className="bg-card/50 border-white/5 relative overflow-hidden group">
-          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 blur-3xl rounded-full -mr-12 -mt-12" />
+        <Card className="bg-card/50 border-white/5 relative overflow-hidden group hover:border-primary/30 transition-colors">
+          <div className="absolute top-0 right-0 w-24 h-24 bg-primary/10 blur-3xl rounded-full -mr-12 -mt-12 group-hover:bg-primary/20 transition-colors" />
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-headline">Total Messages</CardTitle>
             <MessageSquare className="w-4 h-4 text-primary" />
@@ -75,7 +80,7 @@ export default function DashboardOverview() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50 border-white/5 relative overflow-hidden group">
+        <Card className="bg-card/50 border-white/5 relative overflow-hidden group hover:border-secondary/30 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-headline">Active Sessions</CardTitle>
             <Activity className="w-4 h-4 text-secondary" />
@@ -89,7 +94,7 @@ export default function DashboardOverview() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50 border-white/5 relative overflow-hidden group">
+        <Card className="bg-card/50 border-white/5 relative overflow-hidden group hover:border-green-500/30 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-headline">Threats Blocked</CardTitle>
             <ShieldCheck className="w-4 h-4 text-green-500" />
@@ -100,7 +105,7 @@ export default function DashboardOverview() {
           </CardContent>
         </Card>
 
-        <Card className="bg-card/50 border-white/5 relative overflow-hidden group">
+        <Card className="bg-card/50 border-white/5 relative overflow-hidden group hover:border-yellow-500/30 transition-colors">
           <CardHeader className="flex flex-row items-center justify-between pb-2 space-y-0">
             <CardTitle className="text-sm font-medium text-muted-foreground uppercase tracking-wider font-headline">Avg. Latency</CardTitle>
             <Zap className="w-4 h-4 text-yellow-500" />
@@ -199,9 +204,90 @@ export default function DashboardOverview() {
         </Card>
       </div>
 
-      {/* Bottom Grid */}
+      {/* Bottom Grid: New System Health section */}
       <div className="grid grid-cols-1 md:grid-cols-3 gap-6">
-        <Card className="md:col-span-2 bg-card/50 border-white/5">
+        <Card className="bg-card/50 border-white/5">
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+              <Cpu className="w-5 h-5 text-primary" />
+              Node Resources
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-muted-foreground uppercase">CPU Load</span>
+                <span>12.5%</span>
+              </div>
+              <Progress value={12} className="h-1.5" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-muted-foreground uppercase">RAM (Heap)</span>
+                <span>428MB / 1GB</span>
+              </div>
+              <Progress value={42} className="h-1.5" />
+            </div>
+            <div className="space-y-2">
+              <div className="flex justify-between text-xs font-mono">
+                <span className="text-muted-foreground uppercase">Storage</span>
+                <span>8.2GB / 50GB</span>
+              </div>
+              <Progress value={16} className="h-1.5" />
+            </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/50 border-white/5">
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+              <Globe className="w-5 h-5 text-secondary" />
+              Regional Load
+            </CardTitle>
+          </CardHeader>
+          <CardContent>
+             <div className="space-y-3">
+               {[
+                 { loc: 'Europe', load: 12, status: 'online' },
+                 { loc: 'NA East', load: 45, status: 'online' },
+                 { loc: 'Asia-South', load: 88, status: 'warning' },
+               ].map((region) => (
+                 <div key={region.loc} className="flex items-center justify-between p-2 rounded-lg bg-white/5 border border-white/5">
+                   <span className="text-xs font-medium">{region.loc}</span>
+                   <div className="flex items-center gap-3">
+                     <span className="text-[10px] font-mono text-muted-foreground">{region.load}%</span>
+                     <div className={cn(
+                       "w-1.5 h-1.5 rounded-full",
+                       region.status === 'online' ? 'bg-green-500' : 'bg-yellow-500'
+                     )} />
+                   </div>
+                 </div>
+               ))}
+             </div>
+          </CardContent>
+        </Card>
+
+        <Card className="bg-card/50 border-white/5">
+          <CardHeader>
+            <CardTitle className="font-headline flex items-center gap-2">
+              <Database className="w-5 h-5 text-green-500" />
+              DB Health
+            </CardTitle>
+          </CardHeader>
+          <CardContent className="space-y-4">
+             <div className="text-center py-2">
+                <div className="text-3xl font-bold font-mono text-green-500">99.9%</div>
+                <p className="text-[10px] uppercase text-muted-foreground tracking-widest mt-1">Uptime SLA</p>
+             </div>
+             <div className="p-3 rounded-xl bg-green-500/5 border border-green-500/20 text-[10px] text-green-200/70 text-center">
+               Database clusters are fully synchronized. Last backup 4m ago.
+             </div>
+          </CardContent>
+        </Card>
+      </div>
+
+      {/* Event Stream */}
+      <Card className="bg-card/50 border-white/5">
           <CardHeader>
             <CardTitle className="font-headline">Live Event Stream</CardTitle>
           </CardHeader>
@@ -214,7 +300,7 @@ export default function DashboardOverview() {
                 { type: "SUCCESS", msg: "PLUGIN: Economy Module v2.1.0 loaded", time: "1m ago" },
                 { type: "INFO", msg: "USER-9941: Role changed to [SUDO]", time: "2m ago" },
               ].map((log, i) => (
-                <div key={i} className="flex items-start gap-4 border-b border-white/5 pb-2 last:border-0">
+                <div key={i} className="flex items-start gap-4 border-b border-white/5 pb-2 last:border-0 hover:bg-white/5 transition-colors p-1 rounded">
                   <span className={cn(
                     "px-2 py-0.5 rounded text-[10px] font-bold w-16 text-center",
                     log.type === "SUCCESS" ? "bg-green-500/10 text-green-500" : 
@@ -228,33 +314,9 @@ export default function DashboardOverview() {
                 </div>
               ))}
             </div>
-            <Button variant="link" className="mt-4 p-0 text-primary h-auto text-xs font-headline">View Full Stream ↗</Button>
+            <Button variant="link" className="mt-4 p-0 text-primary h-auto text-xs font-headline hover:text-primary/80">View Full Stream ↗</Button>
           </CardContent>
         </Card>
-
-        <Card className="bg-card/50 border-white/5">
-          <CardHeader>
-            <CardTitle className="font-headline">Quick Controls</CardTitle>
-          </CardHeader>
-          <CardContent className="space-y-2">
-            {[
-              { label: "Public Mode", active: true },
-              { label: "Anti-Spam", active: true },
-              { label: "Economy Hub", active: false },
-              { label: "AI Translation", active: true },
-              { label: "Maintenance", active: false },
-            ].map((control) => (
-              <div key={control.label} className="flex items-center justify-between p-3 rounded-xl bg-white/5 border border-white/5">
-                <span className="text-sm font-medium">{control.label}</span>
-                <div className={cn(
-                  "w-2 h-2 rounded-full",
-                  control.active ? "bg-green-500 shadow-[0_0_8px_hsl(var(--chart-2))]" : "bg-white/10"
-                )} />
-              </div>
-            ))}
-          </CardContent>
-        </Card>
-      </div>
     </div>
   )
 }
