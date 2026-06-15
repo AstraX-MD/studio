@@ -7,12 +7,12 @@ export default class PostgresProvider {
   }
 
   async init() {
-    this.bot.logger.info('Postgres Provider code ready (Stub: Requires pg installation)');
+    console.log('==> DATABASE: Postgres Provider initialization skip (Stub)');
   }
 
-  async get(collection, key) { /* Logic */ }
-  async set(collection, key, value) { /* Logic */ }
-  async delete(collection, key) { /* Logic */ }
-  async has(collection, key) { /* Logic */ }
-  async all(collection) { /* Logic */ }
+  async get(collection, key) { return null; }
+  async set(collection, key, value) { return; }
+  async delete(collection, key) { return; }
+  async has(collection, key) { return false; }
+  async all(collection) { return {}; }
 }

@@ -10,13 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
 const plugins = [
-  { id: '1', name: 'Economy Pro', author: 'AstraCore', status: 'Installed', version: '2.4.0', type: 'Core', desc: 'Complete banking, gambling and XP system with cloud database support.', aliases: ['eco', 'money'] },
-  { id: '2', name: 'AI Image Forge', author: 'AstraLabs', status: 'Active', version: '1.2.1', type: 'Extension', desc: 'Integrated DALL-E 3 and Stable Diffusion generator for user commands.', aliases: ['imagine', 'dalle'] },
-  { id: '3', name: 'YouTube Hydra', author: 'HydraDL', status: 'Update', version: '4.0.0', type: 'Downloader', desc: 'High-speed audio and video retrieval with custom quality selection.', aliases: ['play', 'ytv'] },
-  { id: '4', name: 'Warden Guard', author: 'AstraCore', status: 'Active', version: '5.2.0', type: 'Security', desc: 'Advanced moderation suite including anti-link and automated raid protection.', aliases: ['warden', 'antilink'] },
-  { id: '5', name: 'Meme Weaver', author: 'GeniX', status: 'Not Installed', version: '0.8.0', type: 'Media', desc: 'On-the-fly meme generation and image editing suite for groups.', aliases: ['meme', 'edit'] },
-  { id: '6', name: 'Auto-Responder', author: 'AstraCore', status: 'Active', version: '1.0.5', type: 'Automation', desc: 'Custom triggers and automated replies for group management.', aliases: ['autoreply', 'bot'] },
-  { id: '7', name: 'Cloud Sync', author: 'AstraLabs', status: 'Installed', version: '2.0.1', type: 'Core', desc: 'Synchronize session data across multiple hosting nodes instantly.', aliases: ['sync', 'cloud'] }
+  { id: '1', name: 'Economy Pro', author: 'AstraCore', status: 'Installed', version: '2.4.0', type: 'Core', desc: 'Complete banking, gambling and XP system with cloud database support.', aliases: ['eco', 'money', 'bal'] },
+  { id: '2', name: 'AI Image Forge', author: 'AstraLabs', status: 'Active', version: '1.2.1', type: 'Extension', desc: 'Integrated DALL-E 3 and Stable Diffusion generator for user commands.', aliases: ['imagine', 'dalle', 'sdxl'] },
+  { id: '3', name: 'YouTube Hydra', author: 'HydraDL', status: 'Update', version: '4.0.0', type: 'Downloader', desc: 'High-speed audio and video retrieval with custom quality selection.', aliases: ['play', 'ytv', 'song'] },
+  { id: '4', name: 'Warden Guard', author: 'AstraCore', status: 'Active', version: '5.2.0', type: 'Security', desc: 'Advanced moderation suite including anti-link and automated raid protection.', aliases: ['warden', 'antilink', 'block'] },
+  { id: '5', name: 'Meme Weaver', author: 'GeniX', status: 'Not Installed', version: '0.8.0', type: 'Media', desc: 'On-the-fly meme generation and image editing suite for groups.', aliases: ['meme', 'edit', 'triggered'] },
+  { id: '6', name: 'Auto-Responder', author: 'AstraCore', status: 'Active', version: '1.0.5', type: 'Automation', desc: 'Custom triggers and automated replies for group management.', aliases: ['autoreply', 'bot', 'chatbot'] },
+  { id: '7', name: 'Cloud Sync', author: 'AstraLabs', status: 'Installed', version: '2.0.1', type: 'Core', desc: 'Synchronize session data across multiple hosting nodes instantly.', aliases: ['sync', 'cloud', 'session'] }
 ]
 
 export default function PluginsPage() {
@@ -24,7 +24,9 @@ export default function PluginsPage() {
   const [activeTab, setActiveTab] = useState('all')
 
   const filteredPlugins = plugins.filter(plugin => {
-    const query = searchQuery.toLowerCase();
+    const query = searchQuery.toLowerCase().trim();
+    if (!query) return activeTab === 'all' || plugin.type.toLowerCase() === activeTab.toLowerCase();
+
     const matchesSearch = 
       plugin.name.toLowerCase().includes(query) || 
       plugin.desc.toLowerCase().includes(query) ||
@@ -58,7 +60,7 @@ export default function PluginsPage() {
               onChange={(e) => setSearchTerm(e.target.value)}
             />
           </div>
-          <Button variant="secondary" className="h-11 px-6">Search</Button>
+          <Button variant="secondary" className="h-11 px-6 font-headline" onClick={() => console.log('Searching...')}>Search</Button>
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
           <TabsList className="bg-white/5 h-11 p-1">

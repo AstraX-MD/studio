@@ -15,7 +15,7 @@ class EventLoader {
       await this.reload(bot, file);
     }
     
-    bot.logger.info(`Loaded ${bot.events.size} event listeners.`);
+    console.log(`==> ENGINE: ${bot.events.size} event listeners operational.`);
   }
 
   static async reload(bot, fileName) {
@@ -28,7 +28,7 @@ class EventLoader {
       bot.events.set(event.name, event);
       return true;
     } catch (e) {
-      bot.logger.error(`Failed to load event ${fileName}: ${e.message}`);
+      console.log(`==> ERROR: Failed to load event ${fileName}`);
       return false;
     }
   }

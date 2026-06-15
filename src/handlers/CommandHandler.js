@@ -37,9 +37,8 @@ class CommandHandler {
       // 4. Execution
       await command.execute(ctx, args);
       
-      this.bot.logger.info(`Command Executed: [${command.name}] by ${ctx.sender}`);
     } catch (error) {
-      this.bot.logger.error(`Command Error [${command.name}]: ${error.message}`);
+      console.log(`==> ERROR: [${command.name}] execution failed: ${error.message}`);
       await ctx.reply(`⚠️ *Framework Error*\n\nDetails: ${error.message}\n_Reporting to developers..._`);
     }
   }

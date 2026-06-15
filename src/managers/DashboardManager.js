@@ -26,7 +26,7 @@ export default class DashboardManager {
    */
   async init() {
     if (!this.isEnabled) return;
-    this.bot.logger.info('Dashboard Bridge Architecture initialized.');
+    console.log('==> DASHBOARD: Web-Bridge architecture operational.');
   }
 
   /**

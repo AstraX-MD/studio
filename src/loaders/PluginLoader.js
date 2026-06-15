@@ -4,7 +4,7 @@
  */
 class PluginLoader {
   static async load(bot) {
-    bot.logger.info('Plugin Marketplace Loader initialized.');
+    console.log('==> MARKETPLACE: Plugin registry initialized.');
     // Logic for loading non-command/non-event plugins
   }
 }

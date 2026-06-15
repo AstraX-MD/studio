@@ -38,21 +38,26 @@ class Bot {
   }
 
   async init() {
-    console.log(`┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋`);
-    console.log(`┃ Version: 2.4.3-STABLE`);
+    console.log(`\n┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋`);
+    console.log(`┃ Version: 2.4.5-STABLE`);
     console.log(`┃ Status: INITIALIZING...`);
     console.log(`└─────────────────────────`);
     
-    await this.db.init();
-    await this._checkExpiration();
+    try {
+      await this.db.init();
+      await this._checkExpiration();
 
-    await CommandLoader.load(this);
-    await EventLoader.load(this);
-    await PluginLoader.load(this);
+      await CommandLoader.load(this);
+      await EventLoader.load(this);
+      await PluginLoader.load(this);
 
-    await this.client.connect();
-    
-    this.isReady = true;
+      await this.client.connect();
+      
+      this.isReady = true;
+      console.log(`\n==> CONSOLE: System ready for interactions.\n`);
+    } catch (error) {
+      console.log(`\n==> CRITICAL: Boot sequence failed: ${error.message}\n`);
+    }
   }
 
   getCommandManifest() {

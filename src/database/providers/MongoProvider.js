@@ -23,6 +23,7 @@ export default class MongoProvider {
     if (!url) throw new Error('MONGODB_URL not found.');
     
     await mongoose.connect(url);
+    console.log('==> DATABASE: Mode [MONGODB] connected.');
   }
 
   async get(collection, key) {

@@ -67,7 +67,7 @@ export default class SettingsManager {
     currentData[category][key] = value;
     await this.bot.db.set('settings', jid, currentData);
     
-    this.bot.logger.info(`Settings Updated: [${jid}] ${category}.${key} = ${value}`);
+    console.log(`==> SETTINGS: [${jid}] ${category}.${key} = ${value}`);
   }
 
   /**

@@ -8,7 +8,7 @@ export default class RamProvider {
   }
 
   async init() {
-    this.bot.logger.warn('RAM Provider active. Data will NOT persist after restart.');
+    console.log('==> DATABASE: Mode [RAM] active. Data will NOT persist.');
   }
 
   _getKey(coll, key) {
