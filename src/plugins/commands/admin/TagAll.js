@@ -1,16 +1,18 @@
 /**
- * @fileOverview Mention all group members with hierarchical sorting.
+ * @fileOverview Dynamic TagAll with dynamic footer and name.
  */
 export default {
   name: "tagall",
   aliases: ["everyone", "all"],
   category: "admin",
-  description: "Mention all members in the group with professional sorting.",
+  description: "Mention all members in the group.",
   usage: "tagall [message]",
   permissions: 5,
   groupOnly: true,
   execute: async (ctx, args) => {
+    const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
     const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
+    
     const metadata = await ctx.sock.groupMetadata(ctx.jid);
     const participants = metadata.participants;
     const admins = participants.filter(p => p.admin);
@@ -34,7 +36,7 @@ export default {
       output += `├─ ${String(admins.length + i + 1).padStart(2, '0')}. @${mem.id.split('@')[0]}\n`;
     });
 
-    output += `┃\n└─ 🌌 AstraX Enterprise | ${prefix}help`;
+    output += `┃\n└─ 🌌 ${botName} Enterprise | ${prefix}help`;
 
     await ctx.sock.sendMessage(ctx.jid, { 
       text: output, 

@@ -1,15 +1,17 @@
 /**
- * @fileOverview Alive command with WolfBot Box Styling.
+ * @fileOverview Dynamic status command.
  */
 export default {
   name: "alive",
   category: "utility",
   description: "Check if the bot is active.",
-  usage: "!alive",
+  usage: "alive",
   cooldown: 5,
   permissions: 1,
   execute: async (ctx) => {
-    const status = `┌──⌈ ASTRAX STATUS ⌋
+    const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
+    
+    const status = `┌──⌈ ${botName.toUpperCase()} STATUS ⌋
 ┃ Mode: Online
 ┃ System: Stable
 ┃ Version: 2.4.0

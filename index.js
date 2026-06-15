@@ -31,20 +31,13 @@ const SESSION_TIMEOUT_MINUTES = 15;
 const QR_TIMEOUT_SECONDS = 60;
 const POST_OPEN_WAIT_MS = 10000;
 
-const BOT_NAME = process.env.BOT_NAME || 'AstraX';
-const BOT_THUMBNAIL = 'https://i.ibb.co/QvGY7dqB/file-00000000e1107243ad54749c06fe2d80.png';
-const CHANNEL_LINK = 'https://whatsapp.com/channel/0029VbCBgLmCMY0GES5inT3p';
-const CHANNEL_NAME = 'ASTRAX';
-const FORWARD_SCORE = 430;
-const CHANNEL_JID = ''; 
-
 if (!fs.existsSync(BASE_SESSION_DIR)) {
   fs.mkdirSync(BASE_SESSION_DIR, { recursive: true });
 }
 
 /**
- * SESSION_ID BOOT LOGIC
- * If a SESSION_ID is provided in the environment, decode it and setup the session folder.
+ * BOT ENGINE BOOT
+ * Runs only if SESSION_ID is present in environment variables.
  */
 if (process.env.SESSION_ID) {
   const sessionName = process.env.SESSION_NAME || 'AstraX-Main';
@@ -55,22 +48,20 @@ if (process.env.SESSION_ID) {
     try {
       const decoded = Buffer.from(process.env.SESSION_ID.split('~')[1] || process.env.SESSION_ID, 'base64').toString();
       fs.writeFileSync(join(targetDir, 'creds.json'), decoded);
-      console.log(`==> AstraX: Session creds restored to ${targetDir}`);
+      console.log(`==> ENGINE: Session credentials restored to ${targetDir}`);
     } catch (e) {
-      console.error('==> AstraX: Failed to decode SESSION_ID. Ensure it is a valid base64 string.');
+      console.error('==> ERROR: Failed to decode SESSION_ID. Ensure it is a valid base64 string.');
     }
   }
 
-  // Boot the bot engine
-  console.log('==> AstraX: Bot Mode Active. Initializing...');
   bot.init().catch(err => {
-    console.error('==> AstraX: Bot boot failed:', err);
+    console.error('==> CRITICAL: Bot initialization failed:', err);
   });
 }
 
 /**
  * SESSION GENERATOR SERVER
- * Runs only if SESSION_ID is not present or if specifically configured to run alongside.
+ * Runs if SESSION_ID is missing or if explicitly requested.
  */
 const app = express();
 const server = createServer(app);
@@ -91,36 +82,12 @@ app.get('/status', (req, res) => {
 
   res.json({
     status: 'alive',
-    bot: BOT_NAME,
     ramUsage: `${ramPercent}%`,
     uptime: Math.floor(process.uptime())
   });
 });
 
 const activeSessions = new Map();
-
-function getOldStyleChannelContext() {
-  return {
-    forwardingScore: FORWARD_SCORE,
-    isForwarded: true,
-    externalAdReply: {
-      title: 'WhatsApp',
-      body: `Contact: ${CHANNEL_NAME}`,
-      mediaType: 1,
-      thumbnailUrl: BOT_THUMBNAIL,
-      mediaUrl: CHANNEL_LINK,
-      sourceUrl: CHANNEL_LINK,
-      showAdAttribution: true,
-      renderLargerThumbnail: false,
-      verifiedBizName: 'WhatsApp'
-    },
-    forwardedNewsletterMessageInfo: {
-      newsletterJid: CHANNEL_JID,
-      newsletterName: CHANNEL_NAME,
-      serverMessageId: Math.floor(Math.random() * 100000)
-    }
-  };
-}
 
 async function createNewSession(userId, socket) {
   const sessionDir = join(BASE_SESSION_DIR, userId);
@@ -154,51 +121,11 @@ async function createNewSession(userId, socket) {
       socket.emit('status', 'Connected! Preparing Session ID...');
       await new Promise(r => setTimeout(r, POST_OPEN_WAIT_MS));
 
-      const welcomeText = `┌──⌈ ${BOT_NAME.toUpperCase()} CORE ⌋
-┃ Engine: Active
-┃ AI Core: Online
-┃ Status: Running
-┃ Plugins: 500+
-└────────────────
-
-Connection successful! Subscribed to ${CHANNEL_NAME}.
-Preparing your Session ID...`;
-
-      await sock.sendMessage(sock.user.id, { 
-        text: welcomeText,
-        contextInfo: getOldStyleChannelContext()
-      });
-
       const credsString = JSON.stringify(state.creds);
       const base64Session = Buffer.from(credsString).toString('base64');
       const finalSessionId = `ASTRAX~${base64Session}`;
 
       await sock.sendMessage(sock.user.id, { text: finalSessionId });
-      
-      const instructionsText = `┌──⌈ DEPLOYMENT GUIDE ⌋
-┃ 1. FORK REPOSITORY
-┃ 2. SETUP PLATFORM
-┃ 3. SET ENV SESSION_ID
-┃ 4. START ENGINE
-└────────────────
-
-*Step 1: Fork Repository*
-github.com/astrax-enterprise/astrax
-
-*Step 2: Choose Platform*
-Render / Railway / VPS
-
-*Step 3: Environment Variable*
-Name: SESSION_ID
-Value: (Paste the code above)
-
-Need help? View channel for updates.`;
-
-      await sock.sendMessage(sock.user.id, { 
-        text: instructionsText,
-        contextInfo: getOldStyleChannelContext()
-      });
-
       socket.emit('success', finalSessionId);
       
       setTimeout(async () => {
@@ -215,14 +142,14 @@ Need help? View channel for updates.`;
   });
 }
 
-// Only run the socket server if we are in generator mode (no session ID)
+// Start generator server if no session is active
 if (!process.env.SESSION_ID) {
   io.on('connection', (socket) => {
     const userId = `user_${Date.now()}`;
     createNewSession(userId, socket);
   });
 
-  server.listen(PORT, async () => {
-    console.log(`==> AstraX: Generator Mode Active on port ${PORT}`);
+  server.listen(PORT, () => {
+    console.log(`==> SERVER: Generator operational on port ${PORT}`);
   });
 }

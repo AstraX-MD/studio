@@ -1,5 +1,5 @@
 /**
- * @fileOverview Dynamic Help Menu with WolfBot Box Styling.
+ * @fileOverview Dynamic Help Menu with Real-time Resolution.
  */
 import os from 'os';
 
@@ -8,16 +8,19 @@ export default {
   aliases: ["h", "menu"],
   category: "utility",
   description: "Display the command list.",
-  usage: "!help",
+  usage: "help [command]",
   cooldown: 5,
   permissions: 1,
   execute: async (ctx, args) => {
-    const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
+    const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
+    const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
+    
     const mem = process.memoryUsage();
     const totalMem = os.totalmem() || 1;
     const ramPercent = ((mem.rss / totalMem) * 100).toFixed(0);
 
-    let menu = `┌──⌈ ${ctx.bot.config.name.toUpperCase()} ⌋
+    // Header
+    let menu = `┌──⌈ ${botName.toUpperCase()} ⌋
 ┃ User: ${ctx.pushName}
 ┃ Mode: ${await ctx.bot.managers.settings.isMaintenance() ? 'Maintenance' : 'Public'}
 ┃ Prefix: [ ${prefix} ]
