@@ -46,7 +46,8 @@ class Client {
       logger: pino({ level: 'silent' }),
       browser: Browsers.ubuntu('Chrome'),
       markOnlineOnConnect: true,
-      generateHighQualityLinkPreview: true
+      generateHighQualityLinkPreview: true,
+      syncFullHistory: false
     });
 
     this.sock.ev.on('creds.update', saveCreds);
@@ -71,10 +72,8 @@ class Client {
         const myNum = this.sock.user.id.split(':')[0];
         this.bot.isReady = true;
         
-        // Auto-resolve Owner
-        if (!this.bot.config.owners.includes(myNum)) {
-          this.bot.config.owners.push(myNum);
-        }
+        // Auto-resolve Owner and clear any placeholders
+        this.bot.config.owners = [myNum];
 
         console.log(`\n┌──⌈ 🚀 ASTRAX ONLINE ⌋`);
         console.log(`┃ Account: ${this.sock.user.name || 'AstraX Node'}`);
@@ -108,8 +107,8 @@ class Client {
 ┃ Prefix: [ ${prefix} ]
 ┃ 
 ├─⊷ Modules: ${cmdCount} Active
-├─⊷ Engine: v1.2.5 Stable
-├─⊷ Latency: OPTIMIZED
+├─⊷ Warden: ARMED (Default)
+├─⊷ Target: OWNER_DM
 ┃
 ┃ Use ${prefix}help to begin.
 └────────────────`;

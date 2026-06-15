@@ -1,31 +1,41 @@
 /**
  * @fileOverview Detects and restores deleted messages.
- * v1.2.5: Fixed logger crash.
+ * v1.2.5: Logs routed directly to Owner Private DM.
  */
 export default {
   name: 'messages.delete',
-  description: 'Log and restore deleted messages',
+  description: 'Log and restore deleted messages to Owner DM',
   enabled: true,
   async execute(bot, data) {
-    const config = await bot.db.get('security', 'antidelete:config');
-    if (!config || config.mode === 'off') return;
+    // Enabled by default for AstraX Enterprise
+    const config = await bot.db.get('security', 'antidelete:config') || { mode: 'on' };
+    if (config.mode === 'off') return;
 
     const { keys } = data;
     for (const key of keys) {
       const jid = key.remoteJid;
       const isGroup = jid.endsWith('@g.us');
+      const ownerJid = bot.config.owners[0] + '@s.whatsapp.net';
       
-      const shouldLog = config.mode === 'both' || 
-                        (config.mode === 'dm' && !isGroup) || 
-                        (config.mode === 'groups' && isGroup);
+      console.log(`==> WARDEN: Anti-Delete event detected in ${jid}`);
+      
+      const sender = key.participant || jid;
+      const location = isGroup ? 'Group Chat' : 'Private DM';
 
-      if (shouldLog) {
-        console.log(`==> WARDEN: Anti-Delete triggered in ${jid}`);
-        await bot.client.sock.sendMessage(jid, { 
-          text: `┌──⌈ 🛡️ WARDEN ⌋\n┃ Task: Anti-Delete\n┃ Event: Message Deleted\n┃ User: @${key.participant?.split('@')[0] || jid.split('@')[0]}\n└────────────────`,
-          mentions: [key.participant || jid]
-        }).catch(() => {});
-      }
+      const log = `┌──⌈ 🛡️ WARDEN ALERT ⌋
+┃ Event: MESSAGE_DELETED
+┃ Target: ${location}
+┃ User: @${sender.split('@')[0]}
+┃ Origin: ${jid.split('@')[0]}
+┃
+├─⊷ Status: INTERCEPTED
+└────────────────`;
+
+      // Send the alert only to the Owner's private chat
+      await bot.client.sock.sendMessage(ownerJid, { 
+        text: log,
+        mentions: [sender]
+      }).catch(() => {});
     }
   }
 };

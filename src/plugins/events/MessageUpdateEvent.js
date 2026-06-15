@@ -1,31 +1,42 @@
 /**
  * @fileOverview Detects and logs message edits.
- * v1.2.5: Fixed logger crash.
+ * v1.2.5: Logs routed directly to Owner Private DM.
  */
 export default {
   name: 'messages.update',
-  description: 'Detect message edits and log original content',
+  description: 'Detect message edits and log to Owner DM',
   enabled: true,
   async execute(bot, updates) {
-    const config = await bot.db.get('security', 'antiedit:config');
-    if (!config || config.mode === 'off') return;
+    // Enabled by default for AstraX Enterprise
+    const config = await bot.db.get('security', 'antiedit:config') || { mode: 'on' };
+    if (config.mode === 'off') return;
 
     for (const update of updates) {
-      if (update.update.messageStubType === 68 || update.update.editedMessage) {
+      // 68 is editedMessage stub type in some versions, or check editedMessage property
+      if (update.update.messageStubType === 68 || update.update.editedMessage || update.update.message) {
         const jid = update.key.remoteJid;
+        if (jid === 'status@broadcast') continue;
+        
         const isGroup = jid.endsWith('@g.us');
+        const ownerJid = bot.config.owners[0] + '@s.whatsapp.net';
+        const sender = update.key.participant || jid;
 
-        const shouldLog = config.mode === 'both' || 
-                          (config.mode === 'dm' && !isGroup) || 
-                          (config.mode === 'groups' && isGroup);
+        console.log(`==> WARDEN: Anti-Edit event detected in ${jid}`);
 
-        if (shouldLog) {
-          console.log(`==> WARDEN: Anti-Edit triggered in ${jid}`);
-          await bot.client.sock.sendMessage(jid, { 
-            text: `┌──⌈ 🛡️ WARDEN ⌋\n┃ Task: Anti-Edit\n┃ Event: Message Modified\n┃ User: @${update.key.participant?.split('@')[0] || jid.split('@')[0]}\n└────────────────`,
-            mentions: [update.key.participant || jid]
-          }).catch(() => {});
-        }
+        const log = `┌──⌈ 🛡️ WARDEN ALERT ⌋
+┃ Event: MESSAGE_EDITED
+┃ Target: ${isGroup ? 'Group' : 'DM'}
+┃ User: @${sender.split('@')[0]}
+┃ Origin: ${jid.split('@')[0]}
+┃
+├─⊷ Status: LOGGED
+└────────────────`;
+
+        // Send alert to Owner DM
+        await bot.client.sock.sendMessage(ownerJid, { 
+          text: log,
+          mentions: [sender]
+        }).catch(() => {});
       }
     }
   }

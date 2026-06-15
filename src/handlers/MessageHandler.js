@@ -1,6 +1,7 @@
 /**
  * @fileOverview Inbound message router with High-Visibility Logging.
  * v1.2.5: Optimized for instant command detection and self-reply support.
+ * UPDATED: Removed all fromMe restrictions for self-automation.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -30,9 +31,10 @@ class MessageHandler {
     const logHeader = `[INBOUND] @${senderId}`;
     console.log(`┃ ${logHeader.padEnd(20)} | Content: ${ctx.text.substring(0, 50)}${ctx.text.length > 50 ? '...' : ''}`);
 
-    // 2. SELF-REPLY PROTECTION
-    // Skip if the message is a "Boxed Report" from the bot itself to prevent loops
-    if (ctx.fromMe && (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌'))) {
+    // 2. RECURSIVE LOOP GUARD
+    // We allow fromMe messages to trigger commands, BUT we skip if the message 
+    // is a "Boxed Report" (Menu, Success message, etc) to prevent infinite loops.
+    if (ctx.fromMe && (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌') || ctx.text.includes('├─⊷'))) {
        return; 
     }
 
