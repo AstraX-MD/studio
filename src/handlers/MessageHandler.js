@@ -1,5 +1,5 @@
 /**
- * @fileOverview Inbound message router with integrated Granular Automation Hub.
+ * @fileOverview Inbound message router with integrated Granular Automation & Security Hub.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -11,7 +11,6 @@ class MessageHandler {
   }
 
   async handle(msg) {
-    // 1. Basic sanity checks
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') {
       if (msg.key.remoteJid === 'status@broadcast') {
         await this.handleStatusAutomation(msg);
@@ -21,63 +20,107 @@ class MessageHandler {
 
     const ctx = new Context(this.bot, msg);
     
-    // 2. Resolve Automation (Typing/Recording/Read/React/Block)
+    // 1. Security Check (Anti-Link, Anti-Bot, Anti-Sticker, Anti-Emoji)
+    const isViolator = await this.applySecurity(ctx);
+    if (isViolator) return;
+
+    // 2. Automation Check (Typing/Recording/Read/React)
     const shouldStop = await this.applyAutomation(ctx);
     if (shouldStop) return;
 
-    // 3. Resolve Dynamic Prefix
+    // 3. Command Detection
     const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
-    
-    // 4. Maintenance Mode Check
-    const isMaintenance = await this.bot.managers.settings.isMaintenance();
-    if (isMaintenance) {
-      const userRole = await this.bot.managers.roles.getRole(ctx.sender);
-      if (userRole < 9) return; 
-    }
-
-    // 5. Command Detection
     if (!ctx.text.startsWith(prefix)) return;
 
     const args = ctx.text.slice(prefix.length).trim().split(/ +/);
     const commandName = args.shift().toLowerCase();
 
-    // 6. Lookup Command or Alias
     const command = this.bot.commands.get(commandName);
     if (!command) return;
 
-    // 7. Execute via CommandHandler
     await this.commandHandler.execute(command, ctx, args);
   }
 
   /**
-   * Specifically handles status viewing and liking.
+   * Specifically handles group security violations.
    */
-  async handleStatusAutomation(msg) {
-    try {
-      // Auto View
-      const viewConfig = await this.bot.db.get('automation', 'status:config');
-      if (viewConfig?.mode === 'on') {
-        await this.bot.client.sock.readMessages([msg.key]);
-        this.bot.logger.info(`Status viewed: ${msg.pushName || msg.key.participant}`);
+  async applySecurity(ctx) {
+    if (!ctx.isGroup) return false;
+    
+    const sender = ctx.sender;
+    const jid = ctx.jid;
 
-        // Auto Like (Only if view is on)
-        const likeConfig = await this.bot.db.get('automation', 'status:like:config');
-        if (likeConfig?.mode === 'on') {
-          const emojis = likeConfig.emojis || ['❤️'];
-          const emoji = emojis[Math.floor(Math.random() * emojis.length)];
-          await this.bot.client.sock.sendMessage('status@broadcast', {
-            react: { text: emoji, key: msg.key }
-          }, { statusJidList: [msg.key.participant] });
-        }
+    // Skip checks for Admins/Owners
+    const userRole = await this.bot.managers.roles.getRole(sender, jid);
+    if (userRole >= 5) return false;
+
+    // 1. Anti-Link
+    const linkConfig = await this.bot.db.get('security', `antilink:${jid}`);
+    if (linkConfig?.mode === 'on') {
+      const groupLinkRegex = /(chat.whatsapp.com\/)([0-9A-Za-z]{20,24})/i;
+      if (groupLinkRegex.test(ctx.text)) {
+        await this.executePunishment(ctx, linkConfig.action, 'LINK-VIOLATION');
+        return true;
       }
-    } catch (e) {
-      this.bot.logger.error(`Status Automation Error: ${e.message}`);
+    }
+
+    // 2. Anti-Sticker
+    const stickerConfig = await this.bot.db.get('security', `antisticker:${jid}`);
+    if (stickerConfig?.mode === 'on' && ctx.msg.message?.stickerMessage) {
+      await this.executePunishment(ctx, stickerConfig.action, 'STICKER-VIOLATION');
+      return true;
+    }
+
+    // 3. Anti-Bot
+    const botConfig = await this.bot.db.get('security', `antibot:${jid}`);
+    if (botConfig?.mode === 'on') {
+      if (ctx.msg.key.id.startsWith('BAE5') || ctx.msg.key.id.length > 21) {
+        await this.executePunishment(ctx, 'kick', 'EXTERNAL-BOT-DETECTED');
+        return true;
+      }
+    }
+
+    // 4. Anti-Emoji (Flood)
+    const emojiConfig = await this.bot.db.get('security', `antiemoji:${jid}`);
+    if (emojiConfig?.mode === 'on') {
+      const emojis = ctx.text.match(/[\p{Emoji}]/gu) || [];
+      if (emojis.length > 5) {
+        await this.executePunishment(ctx, emojiConfig.action, 'EMOJI-FLOOD');
+        return true;
+      }
+    }
+
+    return false;
+  }
+
+  async executePunishment(ctx, action, reason) {
+    const target = ctx.sender;
+    const jid = ctx.jid;
+
+    if (action === 'delete' || action === 'kick' || action === 'warn') {
+      await this.bot.client.sock.sendMessage(jid, { delete: ctx.msg.key });
+    }
+
+    if (action === 'warn') {
+      const key = `warns:${jid}:${target.split('@')[0]}`;
+      const count = ((await this.bot.db.get('group_warns', key)) || 0) + 1;
+      await this.bot.db.set('group_warns', key, count);
+      
+      await ctx.reply(`┌──⌈ ⚠️ WARDEN ⌋\n┃ User: @${target.split('@')[0]}\n┃ Violation: ${reason}\n┃ Strike: ${count}/3\n└────────────────`, { mentions: [target] });
+      
+      if (count >= 3) {
+        await ctx.reply(`┌──⌈ ☢️ AUTO-BAN ⌋\n┃ Threshold exceeded.\n┃ Action: Permanent Removal\n└────────────────`);
+        await this.bot.client.sock.groupParticipantsUpdate(jid, [target], "remove");
+        await this.bot.db.delete('group_warns', key);
+      }
+    }
+
+    if (action === 'kick') {
+      await ctx.reply(`┌──⌈ 🚫 WARDEN ⌋\n┃ Target: @${target.split('@')[0]}\n┃ Action: Instant Kick\n┃ Reason: ${reason}\n└────────────────`, { mentions: [target] });
+      await this.bot.client.sock.groupParticipantsUpdate(jid, [target], "remove");
     }
   }
 
-  /**
-   * Applies automation settings based on mode, type, and target lists.
-   */
   async applyAutomation(ctx) {
     try {
       const jid = ctx.jid;
@@ -93,24 +136,13 @@ class MessageHandler {
         return false;
       };
 
-      // 1. Auto Block Fake Numbers
-      const blockConfig = await this.bot.db.get('automation', 'block:fake:config');
-      if (blockConfig?.mode === 'on') {
-        const isFake = blockConfig.codes.some(code => sender.startsWith(code.replace('+', '')));
-        if (isFake) {
-          await this.bot.client.sock.updateBlockStatus(sender, 'block');
-          this.bot.logger.warn(`Auto-blocked bogus number: ${sender}`);
-          return true;
-        }
-      }
-
-      // 2. Auto Read
+      // Auto Read
       const readConfig = await this.bot.db.get('automation', 'read:config');
       if (checkActive(readConfig)) {
         await this.bot.client.sock.readMessages([ctx.msg.key]);
       }
 
-      // 3. Auto React
+      // Auto React
       const reactConfig = await this.bot.db.get('automation', 'react:config');
       if (checkActive(reactConfig)) {
         const emojis = reactConfig.emojis || ['🔥'];
@@ -118,7 +150,7 @@ class MessageHandler {
         await ctx.react(emoji).catch(() => {});
       }
 
-      // 4. Presence Automation (Typing)
+      // Presence Automation (Typing)
       const typeConfig = await this.bot.db.get('automation', 'typing:config');
       if (checkActive(typeConfig)) {
         await this.bot.client.sock.sendPresenceUpdate('composing', jid);
@@ -126,23 +158,34 @@ class MessageHandler {
         await this.bot.client.sock.sendPresenceUpdate('paused', jid);
       }
 
-      // 5. Presence Automation (Recording)
+      // Presence Automation (Recording)
       const recConfig = await this.bot.db.get('automation', 'record:config');
       if (checkActive(recConfig)) {
         await this.bot.client.sock.sendPresenceUpdate('recording', jid);
         await new Promise(r => setTimeout(r, (recConfig.duration || 10) * 1000));
         await this.bot.client.sock.sendPresenceUpdate('paused', jid);
       }
-
-      // 6. Presence Automation (Always Online)
-      const onlineConfig = await this.bot.db.get('automation', 'presence:online:config');
-      if (onlineConfig?.mode === 'on') {
-        await this.bot.client.sock.sendPresenceUpdate('available');
-      }
     } catch (e) {
       this.bot.logger.error(`Automation Hub Error: ${e.message}`);
     }
     return false;
+  }
+
+  async handleStatusAutomation(msg) {
+    try {
+      const viewConfig = await this.bot.db.get('automation', 'status:config');
+      if (viewConfig?.mode === 'on') {
+        await this.bot.client.sock.readMessages([msg.key]);
+        const likeConfig = await this.bot.db.get('automation', 'status:like:config');
+        if (likeConfig?.mode === 'on') {
+          const emojis = likeConfig.emojis || ['❤️'];
+          const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+          await this.bot.client.sock.sendMessage('status@broadcast', {
+            react: { text: emoji, key: msg.key }
+          }, { statusJidList: [msg.key.participant] });
+        }
+      }
+    } catch (e) {}
   }
 }
 
