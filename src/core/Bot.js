@@ -1,4 +1,3 @@
-
 /**
  * @fileOverview The main orchestrator for the AstraX framework.
  */
@@ -10,6 +9,7 @@ import MessageHandler from '../handlers/MessageHandler.js';
 import EventHandler from '../handlers/EventHandler.js';
 import DatabaseManager from '../database/DatabaseManager.js';
 import RoleManager from '../managers/RoleManager.js';
+import SettingsManager from '../managers/SettingsManager.js';
 import config from '../configs/default.js';
 import pino from 'pino';
 
@@ -24,10 +24,13 @@ class Bot {
     this.events = new Map();
     this.plugins = new Map();
     
+    // Core Managers
     this.managers = {
-      roles: new RoleManager(this)
+      roles: new RoleManager(this),
+      settings: new SettingsManager(this)
     };
 
+    // Central Handlers
     this.handlers = {
       message: new MessageHandler(this),
       event: new EventHandler(this)
@@ -39,15 +42,15 @@ class Bot {
   async init() {
     this.logger.info('Initializing AstraX Core...');
     
-    // 1. Init Database
+    // 1. Init Database first as managers depend on it
     await this.db.init();
 
-    // 2. Load Modules
+    // 2. Load Modules (Commands, Events, Plugins)
     await CommandLoader.load(this);
     await EventLoader.load(this);
     await PluginLoader.load(this);
 
-    // 3. Connect Socket
+    // 3. Connect to WhatsApp
     await this.client.connect();
     
     this.isReady = true;
