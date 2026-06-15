@@ -1,6 +1,6 @@
 /**
  * @fileOverview Inbound message router with integrated Granular Automation & Security Hub.
- * Updated to support Anti-Spam, Anti-Toxic, Anti-Word, and Anti-TagAll logic.
+ * Updated to support Anti-Media (Audio, Video, Voice, Poll, etc.) and Privacy filters.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -23,11 +23,11 @@ class MessageHandler {
 
     const ctx = new Context(this.bot, msg);
     
-    // 1. Security Check (Anti-Link, Anti-Bot, Anti-Sticker, Anti-Emoji, Anti-Spam, etc.)
+    // 1. Security Check (Warden Suite)
     const isViolator = await this.applySecurity(ctx);
     if (isViolator) return;
 
-    // 2. Automation Check (Typing/Recording/Read/React)
+    // 2. Automation Check (Presence/Reaction/Read)
     const shouldStop = await this.applyAutomation(ctx);
     if (shouldStop) return;
 
@@ -77,24 +77,28 @@ class MessageHandler {
 
     if (!ctx.isGroup) return false;
 
-    // 2. Anti-Link
-    const linkConfig = await this.bot.db.get('security', `antilink:${jid}`);
-    if (linkConfig?.mode === 'on') {
-      const groupLinkRegex = /(chat.whatsapp.com\/)([0-9A-Za-z]{20,24})/i;
-      if (groupLinkRegex.test(ctx.text)) {
-        await this.executePunishment(ctx, linkConfig.action, 'LINK-VIOLATION');
+    // Media & Message Content Filters
+    const checkMedia = async (type, condition, reason) => {
+      const config = await this.bot.db.get('security', `anti${type}:${jid}`);
+      if (config?.mode === 'on' && condition) {
+        await this.executePunishment(ctx, config.action || 'delete', reason);
         return true;
       }
-    }
+      return false;
+    };
 
-    // 3. Anti-Sticker
-    const stickerConfig = await this.bot.db.get('security', `antisticker:${jid}`);
-    if (stickerConfig?.mode === 'on' && ctx.msg.message?.stickerMessage) {
-      await this.executePunishment(ctx, stickerConfig.action, 'STICKER-VIOLATION');
-      return true;
-    }
+    if (await checkMedia('link', /(chat.whatsapp.com\/)([0-9A-Za-z]{20,24})/i.test(ctx.text), 'LINK-VIOLATION')) return true;
+    if (await checkMedia('sticker', ctx.msg.message?.stickerMessage, 'STICKER-VIOLATION')) return true;
+    if (await checkMedia('audio', ctx.msg.message?.audioMessage && !ctx.msg.message?.audioMessage?.ptt, 'AUDIO-FILE')) return true;
+    if (await checkMedia('voicemail', ctx.msg.message?.audioMessage?.ptt, 'VOICE-NOTE')) return true;
+    if (await checkMedia('video', ctx.msg.message?.videoMessage, 'VIDEO-FILE')) return true;
+    if (await checkMedia('poll', ctx.msg.message?.pollCreationMessage, 'POLL-DETECTION')) return true;
+    if (await checkMedia('document', ctx.msg.message?.documentMessage, 'DOCUMENT-FILE')) return true;
+    if (await checkMedia('contact', ctx.msg.message?.contactMessage || ctx.msg.message?.contactsArrayMessage, 'CONTACT-CARD')) return true;
+    if (await checkMedia('location', ctx.msg.message?.locationMessage || ctx.msg.message?.liveLocationMessage, 'LOCATION-SHARE')) return true;
+    if (await checkMedia('forward', ctx.msg.message?.contextInfo?.isForwarded, 'FORWARDED-MSG')) return true;
 
-    // 4. Anti-Emoji
+    // Anti-Emoji
     const emojiConfig = await this.bot.db.get('security', `antiemoji:${jid}`);
     if (emojiConfig?.mode === 'on') {
       const emojis = ctx.text.match(/[\p{Emoji}]/gu) || [];
@@ -104,8 +108,8 @@ class MessageHandler {
       }
     }
 
-    // 5. Anti-TagAll
-    const tagAllConfig = await this.bot.db.get('security', `antitagall:${jid}`);
+    // Anti-TagAll / Anti-GroupStatusMention
+    const tagAllConfig = await this.bot.db.get('security', `antitagall:${jid}`) || await this.bot.db.get('security', `antigrpmention:${jid}`);
     if (tagAllConfig?.mode === 'on') {
       const mentions = ctx.msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
       if (mentions.length > 10 || ctx.text.includes('@everyone') || ctx.text.includes('@here')) {
@@ -114,7 +118,7 @@ class MessageHandler {
       }
     }
 
-    // 6. Anti-Toxic (AI Powered)
+    // Anti-Toxic (AI Powered)
     const toxicConfig = await this.bot.db.get('security', `antitoxic:${jid}`);
     if (toxicConfig?.mode === 'on' && ctx.text.length > 5) {
       try {
@@ -126,7 +130,7 @@ class MessageHandler {
       } catch (e) {}
     }
 
-    // 7. Anti-Word
+    // Anti-Word
     const wordConfig = await this.bot.db.get('security', `antiword:${jid}`);
     if (wordConfig?.mode === 'on' && wordConfig.words?.length > 0) {
       const hasBanned = wordConfig.words.some(w => ctx.text.toLowerCase().includes(w.toLowerCase()));
@@ -182,6 +186,13 @@ class MessageHandler {
         return false;
       };
 
+      // Check Privacy "Anti" filters for bot behavior
+      const onlineConfig = await this.bot.db.get('security', 'antionline:config');
+      const activeConfig = await this.bot.db.get('security', 'antiactive:config');
+      
+      // If Anti-Online/Active is ON, skip presence updates
+      const skipPresence = onlineConfig?.mode === 'on' || activeConfig?.mode === 'on';
+
       // Auto Read
       const readConfig = await this.bot.db.get('automation', 'read:config');
       if (checkActive(readConfig)) {
@@ -196,32 +207,33 @@ class MessageHandler {
         await ctx.react(emoji).catch(() => {});
       }
 
-      // Presence Automation (Typing)
-      const typeConfig = await this.bot.db.get('automation', 'typing:config');
-      if (checkActive(typeConfig)) {
-        await this.bot.client.sock.sendPresenceUpdate('composing', jid);
-        await new Promise(r => setTimeout(r, (typeConfig.duration || 5) * 1000));
-        await this.bot.client.sock.sendPresenceUpdate('paused', jid);
-      }
+      if (!skipPresence) {
+        // Presence Automation (Typing)
+        const typeConfig = await this.bot.db.get('automation', 'typing:config');
+        if (checkActive(typeConfig)) {
+          await this.bot.client.sock.sendPresenceUpdate('composing', jid);
+          await new Promise(r => setTimeout(r, (typeConfig.duration || 5) * 1000));
+          await this.bot.client.sock.sendPresenceUpdate('paused', jid);
+        }
 
-      // Presence Automation (Recording)
-      const recConfig = await this.bot.db.get('automation', 'record:config');
-      if (checkActive(recConfig)) {
-        await this.bot.client.sock.sendPresenceUpdate('recording', jid);
-        await new Promise(r => setTimeout(r, (recConfig.duration || 10) * 1000));
-        await this.bot.client.sock.sendPresenceUpdate('paused', jid);
+        // Presence Automation (Recording)
+        const recConfig = await this.bot.db.get('automation', 'record:config');
+        if (checkActive(recConfig)) {
+          await this.bot.client.sock.sendPresenceUpdate('recording', jid);
+          await new Promise(r => setTimeout(r, (recConfig.duration || 10) * 1000));
+          await this.bot.client.sock.sendPresenceUpdate('paused', jid);
+        }
       }
 
       // Anti-ViewOnce Recovery
       const viewOnceConfig = await this.bot.db.get('security', 'antiviewonce:config');
       if (checkActive(viewOnceConfig) && (ctx.msg.message?.imageMessage?.viewOnce || ctx.msg.message?.videoMessage?.viewOnce)) {
-          // Log or resend message without viewOnce flag
           const cloned = JSON.parse(JSON.stringify(ctx.msg.message));
           if (cloned.imageMessage) cloned.imageMessage.viewOnce = false;
           if (cloned.videoMessage) cloned.videoMessage.viewOnce = false;
           
           await ctx.reply(`┌──⌈ 👁️ WARDEN ⌋\n┃ Task: View-Once Recover\n┃ User: @${sender.split('@')[0]}\n└────────────────`, { mentions: [sender] });
-          await ctx.sock.sendMessage(jid, cloned, { quoted: ctx.msg });
+          await this.bot.client.sock.sendMessage(jid, cloned, { quoted: ctx.msg });
       }
     } catch (e) {
       this.bot.logger.error(`Automation Hub Error: ${e.message}`);
