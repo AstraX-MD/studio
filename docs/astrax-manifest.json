@@ -1,0 +1,53 @@
+{
+  "framework": "AstraX Enterprise",
+  "version": "2.4.0-STABLE",
+  "architecture": {
+    "engine": "Baileys v6",
+    "runtime": "Node.js (ESM)",
+    "database": {
+      "primary": "MongoDB",
+      "fallback": "JSON File System",
+      "volatile": "In-Memory RAM"
+    }
+  },
+  "subsystems": [
+    {
+      "name": "Warden Security",
+      "features": ["Anti-Link", "Anti-Spam", "Anti-Delete", "Anti-Edit", "Content Moderation"]
+    },
+    {
+      "name": "Autonomous AI Agent",
+      "provider": "Groq / Genkit Hybrid",
+      "capabilities": ["Task Execution", "Contextual Memory", "Tool Calling"]
+    },
+    {
+      "name": "RPG & Levelling",
+      "mechanics": ["XP Gain", "Level Calculation", "Visual Rank Cards", "Prestige"]
+    },
+    {
+      "name": "Enterprise Dashboard",
+      "stack": "Next.js / Express / Socket.io",
+      "features": ["Real-time Telemetry", "Live Pairing", "Remote Config"]
+    }
+  ],
+  "command_structure": {
+    "total_unique": 387,
+    "categories": [
+      "admin", "ai-chat", "ai-image", "ai-video", "ai-song", "anime", 
+      "automation", "converter", "downloaders", "economy", "education", 
+      "football", "fun", "games", "general", "group-advanced", 
+      "logos", "nsfw", "owner", "photo", "profile", "rpg-levelling", 
+      "stalker", "sudo", "tools", "utility"
+    ]
+  },
+  "deployment_guide": {
+    "env_vars": ["SESSION_NAME", "PREFIX", "OWNER_NUMBERS", "DATABASE_TYPE", "MONGODB_URL", "GROQ_API_KEY"],
+    "steps": [
+      "git clone repo",
+      "npm install",
+      "setup .env",
+      "npm start"
+    ],
+    "port_mapping": "Bot Console: 9002"
+  }
+}

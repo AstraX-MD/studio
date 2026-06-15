@@ -1,16 +1,31 @@
 /**
  * @fileOverview Inbound message router with Dynamic Prefix Modes, Autonomous AI Agent, and RPG.
+ * Updated with safe dynamic imports to prevent deployment crashes.
  */
-import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
-import { aiAgentProcess } from '../ai/flows/ai-agent-flow.js';
 
 class MessageHandler {
   constructor(bot) {
     this.bot = bot;
     this.commandHandler = new CommandHandler(bot);
     this.xpCooldowns = new Map();
+    this.agent = null;
+    this._initAgent();
+  }
+
+  /**
+   * Safely initialize the AI Agent subsystem.
+   * Skips if the module is missing or uncompiled.
+   */
+  async _initAgent() {
+    try {
+      const { aiAgentProcess } = await import('../ai/flows/ai-agent-flow.js');
+      this.agent = aiAgentProcess;
+      this.bot.logger.info('AI Agent Subsystem: CONNECTED');
+    } catch (e) {
+      this.bot.logger.warn('AI Agent Subsystem: SKIPPED (Module not found or uncompiled)');
+    }
   }
 
   async handle(msg) {
@@ -42,7 +57,7 @@ class MessageHandler {
 
     // 2. Command Detection with Dynamic Prefix Modes
     const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
-    const prefixMode = await this.bot.managers.settings.get('core', 'prefixMode', 'global') || 'prefix'; // prefix, noprefix, hybrid
+    const prefixMode = await this.bot.managers.settings.get('core', 'prefixMode', 'global') || 'hybrid'; // prefix, noprefix, hybrid
     
     let isCommand = false;
     let commandName = '';
@@ -74,8 +89,10 @@ class MessageHandler {
       }
     }
 
-    // 3. Autonomous AI Agent Logic (Runs for non-command messages)
-    await this.applyAgent(ctx);
+    // 3. Autonomous AI Agent Logic (Runs for non-command messages if enabled)
+    if (this.agent) {
+      await this.applyAgent(ctx);
+    }
   }
 
   async applyAgent(ctx) {
@@ -99,7 +116,7 @@ class MessageHandler {
 
         await this.bot.client.sock.sendPresenceUpdate('composing', ctx.jid);
         
-        const agentResult = await aiAgentProcess({
+        const agentResult = await this.agent({
           message: ctx.text,
           history: history,
           commands: commands,
@@ -126,7 +143,7 @@ class MessageHandler {
         }
       }
     } catch (e) {
-      this.bot.logger.error(`Agent Error: ${e.message}`);
+      this.bot.logger.error(`Agent Interaction Error: ${e.message}`);
     }
   }
 
@@ -136,13 +153,44 @@ class MessageHandler {
     const sender = ctx.sender.split('@')[0];
     const now = Date.now();
     if (this.xpCooldowns.has(ctx.sender) && now - this.xpCooldowns.get(ctx.sender) < 60000) return;
+    
     const stats = await this.bot.db.get('rpg_stats', sender) || { xp: 0, level: 0 };
-    stats.xp += Math.floor(Math.random() * 10) + 15;
+    const xpGain = Math.floor(Math.random() * 10) + 15;
+    stats.xp += xpGain;
+
+    // Check Level Up: Lvl = floor(sqrt(xp/100))
+    const newLevel = Math.floor(Math.sqrt(stats.xp / 100));
+    if (newLevel > (stats.level || 0)) {
+      stats.level = newLevel;
+      const botName = await this.bot.managers.settings.get('core', 'name') || this.bot.config.name;
+      
+      // Reward Level Up (Economy Integration)
+      const eco = await this.bot.db.get('economy', sender) || { wallet: 0, bank: 0 };
+      eco.wallet += 1000;
+      await this.bot.db.set('economy', sender, eco);
+
+      ctx.reply(`┌──⌈ 🆙 LEVEL UP ⌋\n┃ \n┃ User: @${sender}\n┃ New Level: ${newLevel}\n┃ Reward: $1,000 Credits\n┃ \n└─ 🌌 ${botName.toUpperCase()}`, { mentions: [ctx.sender] });
+    }
+
     await this.bot.db.set('rpg_stats', sender, stats);
     this.xpCooldowns.set(ctx.sender, now);
   }
 
-  async handleStatusAutomation(msg) { /* Logic */ }
+  async handleStatusAutomation(msg) { 
+    const config = await this.bot.db.get('automation', 'status:config');
+    if (config?.mode === 'on') {
+      this.bot.logger.info(`Auto-Viewed status from ${msg.key.participant}`);
+      await this.bot.client.sock.readMessages([msg.key]);
+      
+      const likeConfig = await this.bot.db.get('automation', 'status:like:config');
+      if (likeConfig?.mode === 'on') {
+        const emoji = likeConfig.emojis[Math.floor(Math.random() * likeConfig.emojis.length)];
+        await this.bot.client.sock.sendMessage(msg.key.remoteJid, {
+          react: { text: emoji, key: msg.key }
+        }, { statusJidList: [msg.key.participant] });
+      }
+    }
+  }
 }
 
 export default MessageHandler;
