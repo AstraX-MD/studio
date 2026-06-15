@@ -1,6 +1,7 @@
 /**
  * @fileOverview Inbound message router with Expert Level Logging.
  * v1.2.5-EXPERT: Deleted all fromMe guards. Bot responds to itself.
+ * FIXED: Added null-safety to prevent split error.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';

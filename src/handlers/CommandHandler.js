@@ -1,6 +1,7 @@
 /**
  * @fileOverview Executes command logic and handles permissions/errors.
  * v1.2.5: Fail-Safe Execution Core.
+ * FIXED: Removed intrusive cooldown messages.
  */
 import PermissionMiddleware from '../middleware/PermissionMiddleware.js';
 import CooldownManager from '../managers/CooldownManager.js';
@@ -31,7 +32,7 @@ class CommandHandler {
       );
 
       if (remaining) {
-        // Cooldown enforced silently to prevent spam.
+        // Cooldown enforced silently as requested.
         return;
       }
 

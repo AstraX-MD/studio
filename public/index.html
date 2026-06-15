@@ -3,140 +3,101 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AstraX Enterprise | System Hub</title>
+    <title>AstraX Enterprise | Command Hub</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Inter:wght@300;400;600&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #050406; color: #fff; }
-        .font-headline { font-family: 'Space Grotesk', sans-serif; }
+        body { font-family: 'Space Grotesk', sans-serif; background-color: #050406; color: white; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
         .glow-primary { box-shadow: 0 0 20px -5px rgba(151, 71, 255, 0.5); }
-        .active-tab { background: rgba(151, 71, 255, 0.1); border-color: rgba(151, 71, 255, 0.4); color: #9747FF; }
+        .tab-active { border-bottom: 2px solid #9747FF; color: #9747FF; }
     </style>
 </head>
-<body class="p-4 md:p-8">
+<body class="p-6">
     <div class="max-w-6xl mx-auto space-y-8">
         <!-- Header -->
-        <header class="flex flex-col md:flex-row justify-between items-center gap-6">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 bg-primary rounded-xl flex items-center justify-center glow-primary">
-                    <span class="text-2xl">🌌</span>
-                </div>
-                <div>
-                    <h1 class="text-3xl font-headline font-bold tracking-tighter">ASTRAX <span class="text-[#9747FF]">ENTERPRISE</span></h1>
-                    <p class="text-xs text-muted-foreground uppercase tracking-widest font-mono opacity-60">v1.2.5 Operational Node</p>
-                </div>
+        <header class="flex justify-between items-center bg-white/5 p-6 rounded-3xl border border-white/10">
+            <div>
+                <h1 class="text-3xl font-bold tracking-tighter">ASTRAX <span class="text-purple-500">ENTERPRISE</span></h1>
+                <p class="text-gray-400 text-sm">v1.2.5 Stability Architecture</p>
             </div>
-            
-            <!-- Search Hub -->
-            <div class="relative w-full md:w-96 flex gap-2">
-                <input id="searchInput" type="text" placeholder="Search Logic or Aliases..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-[#9747FF]/50 transition-all">
-                <button onclick="triggerSearch()" class="bg-[#9747FF] text-white px-6 rounded-xl font-headline font-bold text-sm hover:opacity-90 transition-all">SEARCH</button>
+            <div class="flex gap-4">
+                <div class="px-4 py-2 bg-green-500/10 border border-green-500/20 rounded-xl text-green-500 text-xs font-bold uppercase tracking-widest flex items-center gap-2">
+                    <div class="w-2 h-2 rounded-full bg-green-500 animate-pulse"></div>
+                    System Online
+                </div>
             </div>
         </header>
 
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="glass p-4 rounded-2xl">
-                <p class="text-[10px] text-muted-foreground uppercase font-mono">System Status</p>
-                <p class="text-xl font-headline font-bold text-green-500">ONLINE</p>
-            </div>
-            <div class="glass p-4 rounded-2xl">
-                <p class="text-[10px] text-muted-foreground uppercase font-mono">Unique Logic</p>
-                <p id="moduleCount" class="text-xl font-headline font-bold">482 Modules</p>
-            </div>
-            <div class="glass p-4 rounded-2xl">
-                <p class="text-[10px] text-muted-foreground uppercase font-mono">Active Triggers</p>
-                <p id="triggerCount" class="text-xl font-headline font-bold">954 Entry Points</p>
-            </div>
-            <div class="glass p-4 rounded-2xl">
-                <p class="text-[10px] text-muted-foreground uppercase font-mono">Average Latency</p>
-                <p class="text-xl font-headline font-bold text-[#82A9FF]">142ms</p>
+        <!-- Search Hub -->
+        <div class="glass p-6 rounded-3xl space-y-4">
+            <div class="flex gap-4">
+                <input type="text" id="searchInput" placeholder="Search commands or aliases (e.g. 'play', 'eco')..." class="flex-1 bg-white/5 border border-white/10 p-4 rounded-2xl focus:outline-none focus:border-purple-500 transition-all">
+                <button onclick="performSearch()" class="px-8 bg-purple-600 rounded-2xl font-bold hover:bg-purple-500 transition-all glow-primary">Search</button>
             </div>
         </div>
 
-        <!-- Main Marketplace Tabs -->
-        <div class="space-y-4">
-            <div class="flex gap-2 overflow-x-auto pb-2 no-scrollbar" id="tabList">
-                <button onclick="switchTab('all')" class="px-6 py-2 rounded-xl glass text-sm font-headline active-tab" data-tab="all">ALL</button>
-                <button onclick="switchTab('admin')" class="px-6 py-2 rounded-xl glass text-sm font-headline" data-tab="admin">ADMIN</button>
-                <button onclick="switchTab('ai')" class="px-6 py-2 rounded-xl glass text-sm font-headline" data-tab="ai">AI</button>
-                <button onclick="switchTab('economy')" class="px-6 py-2 rounded-xl glass text-sm font-headline" data-tab="economy">ECONOMY</button>
-                <button onclick="switchTab('security')" class="px-6 py-2 rounded-xl glass text-sm font-headline" data-tab="security">WARDEN</button>
-                <button onclick="switchTab('tools')" class="px-6 py-2 rounded-xl glass text-sm font-headline" data-tab="tools">UTILITY</button>
+        <!-- Command Tabs -->
+        <div class="glass rounded-3xl overflow-hidden">
+            <div class="flex border-b border-white/10 bg-white/5 overflow-x-auto" id="tabsHeader">
+                <!-- Tabs will be injected here -->
             </div>
-
-            <!-- Command Grid -->
-            <div id="commandGrid" class="grid grid-cols-1 md:grid-cols-3 gap-6">
-                <!-- Commands injected by JS -->
+            <div class="p-6 min-h-[400px]" id="commandGrid">
+                <!-- Commands will be injected here -->
             </div>
         </div>
     </div>
 
     <script>
-        let commands = [];
-        let activeTab = 'all';
+        let allCommands = [];
+        let currentCategory = 'all';
 
-        async function init() {
+        async function fetchManifest() {
             try {
                 const res = await fetch('/api/status');
                 const data = await res.json();
-                document.getElementById('moduleCount').innerText = `${data.commands} Unique Logic`;
-                document.getElementById('triggerCount').innerText = `${data.commands * 2} Triggers`;
-                
-                // Simulated command fetch
-                commands = [
-                    { name: 'ping', desc: 'Latency check.', cat: 'utility', aliases: ['p', 'latency'] },
-                    { name: 'play', desc: 'YouTube downloader.', cat: 'tools', aliases: ['song', 'ytmp3'] },
-                    { name: 'gpt4', desc: 'Advanced AI chat.', cat: 'ai', aliases: ['ask', 'openai'] },
-                    { name: 'ban', desc: 'Remove user.', cat: 'admin', aliases: ['kick'] },
-                    { name: 'bal', desc: 'Check money.', cat: 'economy', aliases: ['wallet', 'bank'] },
-                    { name: 'antilink', desc: 'Warden protection.', cat: 'security', aliases: ['al', 'lock'] }
-                ];
-                render();
-            } catch (e) { console.error(e); }
+                // In production this would fetch the manifest via bot.getCommandManifest()
+                // For demo, we simulate with the data we have.
+                renderTabs(['Admin', 'AI', 'Economy', 'Downloaders', 'Logos', 'Tools', 'Utility']);
+            } catch (e) {
+                console.error("Manifest Error", e);
+            }
         }
 
-        function switchTab(tab) {
-            activeTab = tab;
-            document.querySelectorAll('[data-tab]').forEach(btn => {
-                btn.classList.remove('active-tab');
-                if(btn.dataset.tab === tab) btn.classList.add('active-tab');
-            });
-            render();
+        function renderTabs(categories) {
+            const header = document.getElementById('tabsHeader');
+            header.innerHTML = `<button onclick="setTab('all')" class="px-6 py-4 text-sm font-bold uppercase tracking-widest hover:bg-white/5 transition-all tab-btn" id="tab-all">All</button>` + 
+                categories.map(c => `<button onclick="setTab('${c.toLowerCase()}')" class="px-6 py-4 text-sm font-bold uppercase tracking-widest hover:bg-white/5 transition-all tab-btn" id="tab-${c.toLowerCase()}">${c}</button>`).join('');
+            setTab('all');
         }
 
-        function triggerSearch() { render(); }
-
-        function render() {
-            const query = document.getElementById('searchInput').value.toLowerCase();
+        function setTab(cat) {
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('tab-active'));
+            document.getElementById(`tab-${cat}`).classList.add('tab-active');
+            currentCategory = cat;
+            // Simulated command display
             const grid = document.getElementById('commandGrid');
-            grid.innerHTML = '';
-
-            const filtered = commands.filter(c => {
-                const matchesTab = activeTab === 'all' || c.cat === activeTab;
-                const matchesQuery = !query || 
-                    c.name.includes(query) || 
-                    c.desc.toLowerCase().includes(query) || 
-                    c.aliases.some(a => a.includes(query));
-                return matchesTab && matchesQuery;
-            });
-
-            filtered.forEach(c => {
-                grid.innerHTML += `
-                    <div class="glass p-6 rounded-2xl hover:border-[#9747FF]/30 transition-all group">
-                        <div class="flex justify-between items-start mb-4">
-                            <h3 class="text-lg font-headline font-bold">!${c.name}</h3>
-                            <span class="text-[10px] px-2 py-1 bg-white/5 rounded-full uppercase font-mono">${c.cat}</span>
-                        </div>
-                        <p class="text-xs text-muted-foreground leading-relaxed mb-4">${c.desc}</p>
-                        <div class="text-[9px] font-mono opacity-40">ALIASES: ${c.aliases.join(', ')}</div>
-                    </div>
-                `;
-            });
+            grid.innerHTML = `<div class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <div class="p-4 bg-white/5 border border-white/10 rounded-2xl hover:border-purple-500/50 transition-all cursor-pointer">
+                    <h3 class="font-bold text-purple-400">!ping</h3>
+                    <p class="text-xs text-gray-400">Check engine latency.</p>
+                    <span class="text-[10px] bg-white/10 px-2 py-1 rounded-md mt-2 inline-block">Alias: p, latency</span>
+                </div>
+                <div class="p-4 bg-white/5 border border-white/10 rounded-2xl hover:border-purple-500/50 transition-all cursor-pointer">
+                    <h3 class="font-bold text-purple-400">!gold</h3>
+                    <p class="text-xs text-gray-400">Generate gold logo.</p>
+                    <span class="text-[10px] bg-white/10 px-2 py-1 rounded-md mt-2 inline-block">Category: Logos</span>
+                </div>
+            </div>`;
         }
 
-        init();
+        function performSearch() {
+            const query = document.getElementById('searchInput').value.toLowerCase();
+            console.log("Searching for:", query);
+            // Logic to filter the DOM nodes
+        }
+
+        fetchManifest();
     </script>
 </body>
 </html>

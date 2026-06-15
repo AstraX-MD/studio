@@ -38,7 +38,7 @@ export default {
 ┃\n`;
 
     // Professional Categorization
-    const displayCats = ['admin', 'ai-chat', 'ai-image', 'economy', 'downloaders', 'tools', 'security', 'utility'];
+    const displayCats = ['admin', 'ai-chat', 'ai-image', 'economy', 'downloaders', 'logos', 'tools', 'security', 'utility'];
     
     displayCats.forEach(cat => {
       if (categories[cat]) {

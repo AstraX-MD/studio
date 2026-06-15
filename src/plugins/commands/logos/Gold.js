@@ -22,15 +22,8 @@ export default {
 
     const fallbacks = [
       `https://api.agatz.xyz/api/textpro?theme=gold&text=${encodeURIComponent(text)}`,
-      `https://api.dlow.xyz/api/textpro?theme=gold&text=${encodeURIComponent(text)}`,
       `https://api.vytmp3.com/textpro?theme=gold&text=${encodeURIComponent(text)}`,
-      `https://api.xyter.com/textpro?theme=gold&text=${encodeURIComponent(text)}`,
-      `https://api.zahwazein.xyz/api/textpro/gold?text=${encodeURIComponent(text)}`,
-      `https://api.paxsenix.biz.id/api/textpro/gold?text=${encodeURIComponent(text)}`,
-      `https://api.caliph.biz.id/api/textpro/gold?text=${encodeURIComponent(text)}`,
-      `https://api.yanzbotz.my.id/api/textpro/gold?text=${encodeURIComponent(text)}`,
-      `https://api.miftah.xyz/api/textpro/gold?text=${encodeURIComponent(text)}`,
-      `https://api.erdwpe.my.id/api/textpro/gold?text=${encodeURIComponent(text)}`
+      `https://api.xyter.com/textpro?theme=gold&text=${encodeURIComponent(text)}`
     ];
 
     for (const url of fallbacks) {

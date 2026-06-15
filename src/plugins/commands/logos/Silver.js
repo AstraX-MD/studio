@@ -22,9 +22,7 @@ export default {
 
     const fallbacks = [
       `https://api.agatz.xyz/api/textpro?theme=silver&text=${encodeURIComponent(text)}`,
-      `https://api.dlow.xyz/api/textpro?theme=silver&text=${encodeURIComponent(text)}`,
-      `https://api.zahwazein.xyz/api/textpro/silver?text=${encodeURIComponent(text)}`,
-      `https://api.paxsenix.biz.id/api/textpro/silver?text=${encodeURIComponent(text)}`
+      `https://api.vytmp3.com/textpro?theme=silver&text=${encodeURIComponent(text)}`
     ];
 
     for (const url of fallbacks) {
