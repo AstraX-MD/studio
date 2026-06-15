@@ -1,29 +1,21 @@
 /**
- * @fileOverview Orchestrates database operations with MongoDB priority and JSON/RAM fallback.
- * Fixed: Removed all bot.logger references to prevent boot failures.
+ * @fileOverview Standardized Database Manager for v1.2.5.
+ * FIXED: Removed legacy logger references to prevent boot failures.
  */
 export default class DatabaseManager {
   constructor(bot) {
     this.bot = bot;
     this.provider = null;
-    this.activeProviderName = process.env.DATABASE_TYPE || 'mongodb';
+    this.activeProviderName = process.env.DATABASE_TYPE || 'ram';
   }
 
-  /**
-   * Initializes the database safely.
-   */
   async init() {
     try {
-      if (this.activeProviderName === 'mongodb' && !process.env.MONGODB_URL) {
-        throw new Error('MONGODB_URL missing');
-      }
+      console.log(`==> DATABASE: Initializing [${this.activeProviderName.toUpperCase()}] Layer...`);
       await this._loadProvider(this.activeProviderName);
     } catch (error) {
-      try {
-        await this._loadProvider('json');
-      } catch (e) {
-        await this._loadProvider('ram');
-      }
+      console.log(`==> DATABASE: Primary [${this.activeProviderName}] failed. Falling back...`);
+      await this._loadProvider('ram');
     }
   }
 
@@ -34,7 +26,6 @@ export default class DatabaseManager {
     this.provider = new Provider(this.bot);
     await this.provider.init();
     this.activeProviderName = name;
-    console.log(`==> DATABASE: Active Layer [${name.toUpperCase()}]`);
   }
 
   async get(collection, key) {

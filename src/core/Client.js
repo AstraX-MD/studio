@@ -1,6 +1,5 @@
 /**
- * @fileOverview Wrapper for the Baileys socket connection.
- * Enhanced with Session ID Injection and Auto-Owner Resolution.
+ * @fileOverview Baileys socket wrapper with v1.2.5 Owner Resolution.
  */
 import makeWASocket, { 
   useMultiFileAuthState, 
@@ -24,7 +23,6 @@ class Client {
     const sessionDir = path.resolve('./sessions', this.sessionId);
     if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
 
-    // CLOUD SESSION INJECTION
     const cloudSession = process.env.SESSION_ID;
     if (cloudSession && cloudSession.startsWith('ASTRAX~')) {
       try {
@@ -32,9 +30,7 @@ class Client {
         const credsData = Buffer.from(base64Data, 'base64').toString('utf-8');
         fs.writeFileSync(path.join(sessionDir, 'creds.json'), credsData);
         console.log(`==> AUTH: Session ID injection successful.`);
-      } catch (e) {
-        console.error(`==> AUTH: Failed to inject cloud session:`, e.message);
-      }
+      } catch (e) {}
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
@@ -72,7 +68,6 @@ class Client {
         const myNum = this.sock.user.id.split(':')[0];
         this.bot.isReady = true;
         
-        // Dynamic Owner Resolution
         if (!this.bot.config.owners.includes(myNum)) {
           this.bot.config.owners.push(myNum);
         }
@@ -98,7 +93,7 @@ class Client {
 
   async _notifyOwner(myNum) {
     const jid = `${myNum}@s.whatsapp.net`;
-    const msg = `┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋\n┃\n┃ Status: NODE_SYNCHRONIZED\n┃ Identity: @${myNum}\n┃ Mode: SELF_AWARE_ACTIVE\n┃\n┃ Framework v2.4.2 is now ready.\n┃ All commands are functional.\n└────────────────`;
+    const msg = `┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋\n┃\n┃ Status: NODE_SYNCHRONIZED\n┃ Identity: @${myNum}\n┃ Mode: SELF_AWARE_ACTIVE\n┃\n┃ Framework v1.2.5 is now ready.\n┃ All commands are functional.\n└────────────────`;
     await this.sock.sendMessage(jid, { text: msg, mentions: [jid] }).catch(() => {});
   }
 
