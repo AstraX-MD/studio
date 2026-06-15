@@ -1,11 +1,13 @@
-
 /**
- * @fileOverview Discovers and registers commands from the plugins directory.
+ * @fileOverview Discovers and registers commands with hot-reloading support.
  */
 import fs from 'fs';
 import path from 'path';
 
 class CommandLoader {
+  /**
+   * Scans and loads all commands.
+   */
   static async load(bot) {
     const pluginsDir = path.resolve('src/plugins/commands');
     if (!fs.existsSync(pluginsDir)) return;
@@ -19,23 +21,57 @@ class CommandLoader {
       const files = fs.readdirSync(categoryPath).filter(f => f.endsWith('.js'));
       
       for (const file of files) {
-        try {
-          const { default: command } = await import(`file://${path.join(categoryPath, file)}`);
-          if (!command.name) continue;
-          
-          command.category = category;
-          bot.commands.set(command.name, command);
-          
-          if (command.aliases && Array.isArray(command.aliases)) {
-            command.aliases.forEach(alias => bot.commands.set(alias, command));
-          }
-        } catch (e) {
-          bot.logger.error(`Failed to load command ${file}: ${e.message}`);
-        }
+        await this.reload(bot, category, file);
       }
     }
     
     bot.logger.info(`Loaded ${bot.commands.size} commands.`);
+  }
+
+  /**
+   * Reloads or loads a specific command file.
+   * Uses cache-busting to ensure fresh code is loaded.
+   */
+  static async reload(bot, category, fileName) {
+    try {
+      const filePath = path.resolve('src/plugins/commands', category, fileName);
+      // Cache busting for ESM
+      const { default: command } = await import(`file://${filePath}?update=${Date.now()}`);
+      
+      if (!command || !command.name) return false;
+      
+      command.category = category;
+      command.fileName = fileName;
+      
+      // If updating, clean up old aliases
+      const existing = bot.commands.get(command.name);
+      if (existing && existing.aliases) {
+        existing.aliases.forEach(alias => bot.commands.delete(alias));
+      }
+
+      bot.commands.set(command.name, command);
+      if (command.aliases && Array.isArray(command.aliases)) {
+        command.aliases.forEach(alias => bot.commands.set(alias, command));
+      }
+      return true;
+    } catch (e) {
+      bot.logger.error(`Failed to load command ${fileName}: ${e.message}`);
+      return false;
+    }
+  }
+
+  /**
+   * Unloads a command from memory.
+   */
+  static unload(bot, commandName) {
+    const command = bot.commands.get(commandName);
+    if (!command) return false;
+
+    if (command.aliases) {
+      command.aliases.forEach(alias => bot.commands.delete(alias));
+    }
+    bot.commands.delete(commandName);
+    return true;
   }
 }
 

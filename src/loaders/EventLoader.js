@@ -1,6 +1,5 @@
-
 /**
- * @fileOverview Discovers and registers event listeners.
+ * @fileOverview Discovers and registers event listeners with hot-reloading.
  */
 import fs from 'fs';
 import path from 'path';
@@ -13,17 +12,29 @@ class EventLoader {
     const files = fs.readdirSync(eventsDir).filter(f => f.endsWith('.js'));
     
     for (const file of files) {
-      try {
-        const { default: event } = await import(`file://${path.join(eventsDir, file)}`);
-        if (!event.name) continue;
-        
-        bot.events.set(event.name, event);
-      } catch (e) {
-        bot.logger.error(`Failed to load event ${file}: ${e.message}`);
-      }
+      await this.reload(bot, file);
     }
     
     bot.logger.info(`Loaded ${bot.events.size} event listeners.`);
+  }
+
+  static async reload(bot, fileName) {
+    try {
+      const filePath = path.resolve('src/plugins/events', fileName);
+      const { default: event } = await import(`file://${filePath}?update=${Date.now()}`);
+      
+      if (!event || !event.name) return false;
+      
+      bot.events.set(event.name, event);
+      return true;
+    } catch (e) {
+      bot.logger.error(`Failed to load event ${fileName}: ${e.message}`);
+      return false;
+    }
+  }
+
+  static unload(bot, eventName) {
+    return bot.events.delete(eventName);
   }
 }
 
