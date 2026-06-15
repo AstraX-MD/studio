@@ -1,0 +1,16 @@
+version: '3.8'
+
+services:
+  astrax:
+    build: .
+    container_name: astrax-enterprise
+    restart: always
+    ports:
+      - "9002:9002"
+    volumes:
+      - ./sessions:/app/sessions
+      - ./database:/app/database
+    environment:
+      - NODE_ENV=production
+      - DATABASE_TYPE=json
+      - PORT=9002
