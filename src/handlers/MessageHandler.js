@@ -1,17 +1,15 @@
 /**
- * @fileOverview Inbound message router with integrated Autonomous AI Agent, Security Hub, and RPG.
+ * @fileOverview Inbound message router with Dynamic Prefix Modes, Autonomous AI Agent, and RPG.
  */
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
 import { aiAgentProcess } from '../ai/flows/ai-agent-flow.js';
-import channelConfig from '../configs/channels.js';
 
 class MessageHandler {
   constructor(bot) {
     this.bot = bot;
     this.commandHandler = new CommandHandler(bot);
-    this.spamTracker = new Map();
     this.xpCooldowns = new Map();
   }
 
@@ -42,33 +40,44 @@ class MessageHandler {
       await this.applyRpg(ctx);
     }
 
-    // 2. Security Check (Warden Suite)
-    const isViolator = await this.applySecurity(ctx);
-    if (isViolator) return;
-
-    // 3. Command Detection
+    // 2. Command Detection with Dynamic Prefix Modes
     const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
+    const prefixMode = await this.bot.managers.settings.get('core', 'prefixMode', 'global') || 'prefix'; // prefix, noprefix, hybrid
     
-    if (ctx.text.startsWith(prefix)) {
-      const args = ctx.text.slice(prefix.length).trim().split(/ +/);
-      const commandName = args.shift().toLowerCase();
-      const command = this.bot.commands.get(commandName);
+    let isCommand = false;
+    let commandName = '';
+    let args = [];
 
+    // Mode: Standard Prefix
+    if (ctx.text.startsWith(prefix)) {
+      isCommand = true;
+      args = ctx.text.slice(prefix.length).trim().split(/ +/);
+      commandName = args.shift().toLowerCase();
+    } 
+    // Mode: No-Prefix or Hybrid
+    else if (prefixMode === 'noprefix' || prefixMode === 'hybrid') {
+      const parts = ctx.text.trim().split(/ +/);
+      const possibleCmd = parts.shift().toLowerCase();
+      if (this.bot.commands.has(possibleCmd)) {
+        isCommand = true;
+        commandName = possibleCmd;
+        args = parts;
+      }
+    }
+
+    if (isCommand) {
+      const command = this.bot.commands.get(commandName);
       if (command) {
         await this.commandHandler.execute(command, ctx, args);
-        // Log to memory for AI context
         this.bot.managers.memory.add(ctx.jid, 'user', ctx.text);
         return;
       }
     }
 
-    // 4. Autonomous AI Agent Logic (Runs for non-command messages)
+    // 3. Autonomous AI Agent Logic (Runs for non-command messages)
     await this.applyAgent(ctx);
   }
 
-  /**
-   * Orchestrates the Task-Oriented AI Agent.
-   */
   async applyAgent(ctx) {
     try {
       const config = await this.bot.db.get('automation', 'chatbot:config');
@@ -83,14 +92,11 @@ class MessageHandler {
       else if (mode === 'whitelist' && (whitelist.includes(ctx.sender) || whitelist.includes(ctx.jid))) shouldReply = true;
 
       if (shouldReply && ctx.text.length > 1) {
-        // Fetch Contextual Info
         const quoted = ctx.msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
         const quotedText = quoted?.conversation || quoted?.extendedTextMessage?.text;
-        
         const history = this.bot.managers.memory.get(ctx.jid).map(h => ({ role: h.role, content: h.content }));
         const commands = this.bot.getCommandManifest();
 
-        // Show typing indicator
         await this.bot.client.sock.sendPresenceUpdate('composing', ctx.jid);
         
         const agentResult = await aiAgentProcess({
@@ -106,21 +112,14 @@ class MessageHandler {
         });
         
         if (agentResult) {
-          // 1. Update Memory
           this.bot.managers.memory.add(ctx.jid, 'user', ctx.text);
           this.bot.managers.memory.add(ctx.jid, 'assistant', agentResult.response);
 
-          // 2. Reply to User
-          if (agentResult.response) {
-            await ctx.reply(agentResult.response);
-          }
+          if (agentResult.response) await ctx.reply(agentResult.response);
 
-          // 3. Autonomous Execution
           if (agentResult.executeCommand) {
             const cmd = this.bot.commands.get(agentResult.executeCommand.name);
             if (cmd) {
-              this.bot.logger.info(`AGENT: Autonomous execution of [${cmd.name}]`);
-              // Create a virtual command context
               await this.commandHandler.execute(cmd, ctx, agentResult.executeCommand.args);
             }
           }
@@ -143,14 +142,7 @@ class MessageHandler {
     this.xpCooldowns.set(ctx.sender, now);
   }
 
-  async applySecurity(ctx) {
-    // Basic antispam/antilink logic...
-    return false;
-  }
-
-  async handleStatusAutomation(msg) {
-    // Status viewing logic...
-  }
+  async handleStatusAutomation(msg) { /* Logic */ }
 }
 
 export default MessageHandler;
