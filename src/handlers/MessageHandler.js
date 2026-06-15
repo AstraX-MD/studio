@@ -1,10 +1,10 @@
 /**
- * @fileOverview Inbound message router with integrated Granular Automation, Security Hub & RPG System.
+ * @fileOverview Inbound message router with integrated Granular Automation, Security Hub, RPG System & AI Chatbot.
  */
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
-import { aiContentModeration } from '../ai/flows/ai-content-moderation-flow.js';
+import { aiChatConversation } from '../ai/flows/ai-chat-conversation-flow.js';
 import channelConfig from '../configs/channels.js';
 
 class MessageHandler {
@@ -61,25 +61,72 @@ class MessageHandler {
 
     // 5. Command Detection
     const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
-    if (!ctx.text.startsWith(prefix)) return;
+    
+    if (ctx.text.startsWith(prefix)) {
+      const args = ctx.text.slice(prefix.length).trim().split(/ +/);
+      const commandName = args.shift().toLowerCase();
+      const command = this.bot.commands.get(commandName);
 
-    const args = ctx.text.slice(prefix.length).trim().split(/ +/);
-    const commandName = args.shift().toLowerCase();
-    const command = this.bot.commands.get(commandName);
-
-    if (command) {
-      // Apply Channel Forwarding context if enabled
-      const forwardEnabled = await this.bot.db.get('core', 'forward_channel') || false;
-      if (forwardEnabled) {
-        ctx.forwardContext = {
-          forwardedNewsletterMessageInfo: {
-            newsletterJid: channelConfig.updates.jid,
-            serverMessageId: 100,
-            newsletterName: channelConfig.updates.name
-          }
-        };
+      if (command) {
+        // Apply Channel Forwarding context if enabled
+        const forwardEnabled = await this.bot.db.get('core', 'forward_channel') || false;
+        if (forwardEnabled) {
+          ctx.forwardContext = {
+            forwardedNewsletterMessageInfo: {
+              newsletterJid: channelConfig.updates.jid,
+              serverMessageId: 100,
+              newsletterName: channelConfig.updates.name
+            }
+          };
+        }
+        await this.commandHandler.execute(command, ctx, args);
+        return;
       }
-      await this.commandHandler.execute(command, ctx, args);
+    }
+
+    // 6. AI Chatbot Logic (Runs only if NOT a command)
+    await this.applyChatbot(ctx);
+  }
+
+  /**
+   * AI Chatbot Logic with granular scoping.
+   */
+  async applyChatbot(ctx) {
+    try {
+      const config = await this.bot.db.get('automation', 'chatbot:config');
+      if (!config || config.status !== 'on') return;
+
+      const { mode, whitelist } = config;
+      const isGroup = ctx.isGroup;
+      const sender = ctx.sender;
+      const jid = ctx.jid;
+
+      let shouldReply = false;
+
+      if (mode === 'public') {
+        shouldReply = true;
+      } else if (mode === 'dm' && !isGroup) {
+        shouldReply = true;
+      } else if (mode === 'groups' && isGroup) {
+        shouldReply = true;
+      } else if (mode === 'whitelist') {
+        if (whitelist.includes(sender) || whitelist.includes(jid)) {
+          shouldReply = true;
+        }
+      }
+
+      if (shouldReply && ctx.text.length > 1) {
+        // Show typing indicator
+        await this.bot.client.sock.sendPresenceUpdate('composing', jid);
+        
+        const aiResponse = await aiChatConversation({ message: ctx.text });
+        
+        if (aiResponse && aiResponse.response) {
+          await ctx.reply(aiResponse.response);
+        }
+      }
+    } catch (e) {
+      this.bot.logger.error(`Chatbot Error: ${e.message}`);
     }
   }
 
