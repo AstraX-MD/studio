@@ -1,3 +1,4 @@
+
 "use client"
 
 import * as React from "react"
@@ -12,6 +13,7 @@ import {
   Coins, 
   BrainCircuit, 
   Terminal, 
+  QrCode,
   Settings, 
   Activity,
   ChevronRight,
@@ -31,11 +33,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  SidebarMenuSub,
-  SidebarMenuSubButton,
-  SidebarMenuSubItem,
-  SidebarProvider,
-  SidebarTrigger,
   useSidebar,
 } from "@/components/ui/sidebar"
 import { Progress } from "@/components/ui/progress"
@@ -47,34 +44,24 @@ const navItems = [
     icon: LayoutDashboard,
   },
   {
+    title: "Session Manager",
+    url: "/dashboard/sessions",
+    icon: QrCode,
+  },
+  {
     title: "Plugins",
     url: "/dashboard/plugins",
     icon: Puzzle,
-    subItems: [
-      { title: "Marketplace", url: "/dashboard/plugins/market" },
-      { title: "Commands", url: "/dashboard/plugins/commands" },
-      { title: "Events", url: "/dashboard/plugins/events" },
-    ]
   },
   {
     title: "Warden Security",
     url: "/dashboard/warden",
     icon: ShieldAlert,
-    subItems: [
-      { title: "Anti-Link", url: "/dashboard/warden/anti-link" },
-      { title: "Anti-Spam", url: "/dashboard/warden/anti-spam" },
-      { title: "Anti-Delete", url: "/dashboard/warden/anti-delete" },
-    ]
   },
   {
     title: "RBAC Roles",
     url: "/dashboard/roles",
     icon: Users,
-  },
-  {
-    title: "Social Economy",
-    url: "/dashboard/economy",
-    icon: Coins,
   },
   {
     title: "AI Subsystem",
@@ -136,17 +123,17 @@ export function DashboardSidebar() {
           <SidebarGroupContent className="px-3 py-2 space-y-4">
             <div className="space-y-1.5">
               <div className="flex justify-between text-[10px] font-mono uppercase text-muted-foreground">
-                <span>CPU Load</span>
-                <span>42%</span>
+                <span>RAM Threshold</span>
+                <span>75% Max</span>
               </div>
               <Progress value={42} className="h-1 bg-white/5" />
             </div>
             <div className="space-y-1.5">
               <div className="flex justify-between text-[10px] font-mono uppercase text-muted-foreground">
-                <span>RAM Usage</span>
-                <span>1.4GB / 4GB</span>
+                <span>Active Sessions</span>
+                <span>12 / 100</span>
               </div>
-              <Progress value={35} className="h-1 bg-white/5" />
+              <Progress value={12} className="h-1 bg-white/5" />
             </div>
           </SidebarGroupContent>
         </SidebarGroup>

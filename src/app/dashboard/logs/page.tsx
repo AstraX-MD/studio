@@ -1,3 +1,4 @@
+
 "use client"
 
 import { useState, useEffect, useRef } from 'react'
@@ -5,6 +6,7 @@ import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card"
 import { Button } from "@/components/ui/button"
 import { Terminal, Trash2, Download, Play, Pause, Search } from "lucide-react"
 import { Input } from "@/components/ui/input"
+import { cn } from "@/lib/utils"
 
 export default function LogsPage() {
   const [logs, setLogs] = useState<{ id: string, timestamp: string, level: string, source: string, message: string }[]>([])
@@ -17,22 +19,24 @@ export default function LogsPage() {
 
     const initialLogs = [
       { id: '1', timestamp: new Date().toISOString(), level: 'INFO', source: 'CORE', message: 'AstraX Enterprise Boot Sequence Started' },
-      { id: '2', timestamp: new Date().toISOString(), level: 'DEBUG', source: 'DB', message: 'Connected to PostgreSQL Cluster 01' },
-      { id: '3', timestamp: new Date().toISOString(), level: 'INFO', source: 'PLUGINS', message: 'Loading 5,420 commands from dynamic manifest...' },
-      { id: '4', timestamp: new Date().toISOString(), level: 'WARN', source: 'SECURITY', message: 'Rate limit threshold approaching for session SID_772' },
+      { id: '2', timestamp: new Date().toISOString(), level: 'INFO', source: 'RAM', message: 'RAM Safety: 75% threshold configured' },
+      { id: '3', timestamp: new Date().toISOString(), level: 'INFO', source: 'THUMBNAIL', message: 'Loaded channel.jpg successfully' },
+      { id: '4', timestamp: new Date().toISOString(), level: 'INFO', source: 'SERVER', message: 'AstraX Server operational on port 10000' },
     ]
     setLogs(initialLogs)
 
     const interval = setInterval(() => {
       const levels = ['INFO', 'DEBUG', 'WARN', 'ERROR', 'SUCCESS']
-      const sources = ['CORE', 'DB', 'AI', 'SECURITY', 'NETWORK', 'API']
+      const sources = ['RAM', 'SESSION', 'THUMBNAIL', 'SERVER', 'WASOCKET', 'BAILEYS']
       const messages = [
-        'User query routed to Gemini-Pro-Flash',
-        'Anti-link punishment executed: User kicked from #Marketing',
-        'Auto-backup to S3 bucket completed successfully',
-        'New message received from +1 555-010-9982',
-        'Economy database transaction committed',
-        'Websocket heartbeat received from server-4',
+        'Current Usage: 42.15%',
+        'New client connected: user_172839...',
+        'Preparing pairing code for 254123...',
+        'Waiting 10s for WhatsApp to stabilize...',
+        'Welcome message sent with old style context',
+        'Session ID generated: ASTRAX~MTIz...',
+        'Auto-followed channel: ASTRAX',
+        'Cleaning orphaned sessions...',
       ]
 
       setLogs(prev => [
@@ -69,7 +73,7 @@ export default function LogsPage() {
             <Terminal className="w-8 h-8 text-primary" />
             Terminal Output
           </h2>
-          <p className="text-muted-foreground">Real-time system telemetry and activity logs.</p>
+          <p className="text-muted-foreground">Real-time system telemetry matching core session generator events.</p>
         </div>
         <div className="flex items-center gap-2">
           <Button variant="outline" size="sm" onClick={() => setLogs([])}>
@@ -117,7 +121,7 @@ export default function LogsPage() {
           <div className="space-y-1">
             {filteredLogs.map((log) => (
               <div key={log.id} className="flex gap-4 group transition-colors hover:bg-white/5 py-0.5 rounded px-1">
-                <span className="text-white/20 shrink-0 select-none">[{log.timestamp.split('T')[1].split('.')[0]}]</span>
+                <span className="text-white/20 shrink-0 select-none">[{log.timestamp.split('T')[1].split(':')[0]}]</span>
                 <span className={cn(
                   "font-bold shrink-0 w-16 select-none",
                   log.level === 'ERROR' ? 'text-red-500' :
