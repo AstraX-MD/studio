@@ -1,7 +1,6 @@
 /**
  * @fileOverview Inbound message router with High-Visibility Logging.
  * v1.2.5: Optimized for instant command detection and self-reply support.
- * UPDATED: Removed all fromMe restrictions for self-automation.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -32,8 +31,7 @@ class MessageHandler {
     console.log(`┃ ${logHeader.padEnd(20)} | Content: ${ctx.text.substring(0, 50)}${ctx.text.length > 50 ? '...' : ''}`);
 
     // 2. RECURSIVE LOOP GUARD
-    // We allow fromMe messages to trigger commands, BUT we skip if the message 
-    // is a "Boxed Report" (Menu, Success message, etc) to prevent infinite loops.
+    // Prevent the bot from replying to its own formatted reports.
     if (ctx.fromMe && (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌') || ctx.text.includes('├─⊷'))) {
        return; 
     }
@@ -46,10 +44,11 @@ class MessageHandler {
 
     if (ctx.text.startsWith(prefix)) {
       isCommand = true;
-      args = ctx.text.slice(prefix.length).trim().split(/ +/);
+      const fullContent = ctx.text.slice(prefix.length).trim();
+      args = fullContent.split(/ +/);
       commandName = args.shift().toLowerCase();
     } else {
-      // Hybrid detection: check if the first word is a registered command
+      // Hybrid detection: check if first word is a registered command
       const parts = ctx.text.trim().split(/ +/);
       const possibleCmd = parts.shift().toLowerCase();
       if (this.bot.commands.has(possibleCmd)) {
@@ -60,7 +59,7 @@ class MessageHandler {
     }
 
     // 4. Execution
-    if (isCommand) {
+    if (isCommand && commandName) {
       const command = this.bot.commands.get(commandName);
       if (command) {
         console.log(`┃ [COMMAND] EXECUTING: ${commandName.toUpperCase()} for @${senderId}`);
@@ -69,7 +68,7 @@ class MessageHandler {
       }
     }
 
-    // 5. AI Agent Fallback (Only for others, to save tokens)
+    // 5. AI Agent Fallback (Only for others to save tokens)
     if (this.agent && !ctx.fromMe && ctx.text.length > 1) {
       await this.applyAgent(ctx);
     }

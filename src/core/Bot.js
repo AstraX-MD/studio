@@ -17,6 +17,7 @@ import config from '../configs/default.js';
 class Bot {
   constructor() {
     this.config = config;
+    this.config.version = '1.2.5';
     this.client = new Client(this);
     this.db = new DatabaseManager(this);
     
@@ -36,7 +37,7 @@ class Bot {
     };
     
     this.isReady = false;
-    this.io = null; // Populated by index.js
+    this.io = null; 
   }
 
   async init() {
@@ -57,9 +58,11 @@ class Bot {
       this.isReady = true;
       
       const prefix = await this.managers.settings.get('core', 'prefix') || '!';
+      const uniqueCmds = new Set(this.commands.values()).size;
+
       console.log(`\n┌──⌈ ⚙️ SYSTEM READY ⌋`);
       console.log(`┃ Prefix: [ ${prefix} ]`);
-      console.log(`┃ Modules: ${this.commands.size} Active`);
+      console.log(`┃ Modules: ${uniqueCmds} Unique`);
       console.log(`┃ Events: ${this.events.size} Active`);
       console.log(`┃ Status: LISTENING...`);
       console.log(`└─────────────────────\n`);

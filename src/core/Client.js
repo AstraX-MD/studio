@@ -1,5 +1,6 @@
 /**
  * @fileOverview Baileys socket wrapper with v1.2.5 Absolute Stability.
+ * Optimized to prevent Timeouts (408) and resolve Auto-Owner.
  */
 import makeWASocket, { 
   useMultiFileAuthState, 
@@ -47,7 +48,9 @@ class Client {
       browser: Browsers.ubuntu('Chrome'),
       markOnlineOnConnect: true,
       generateHighQualityLinkPreview: true,
-      syncFullHistory: false
+      syncFullHistory: false, // PREVENT TIMEOUTS
+      linkPreviewImageThumbnailWidth: 600,
+      shouldSyncHistoryMessage: () => false // PREVENT TIMEOUTS
     });
 
     this.sock.ev.on('creds.update', saveCreds);
@@ -72,7 +75,7 @@ class Client {
         const myNum = this.sock.user.id.split(':')[0];
         this.bot.isReady = true;
         
-        // Auto-resolve Owner and clear any placeholders
+        // Auto-resolve Owner
         this.bot.config.owners = [myNum];
 
         console.log(`\n┌──⌈ 🚀 ASTRAX ONLINE ⌋`);
@@ -97,7 +100,7 @@ class Client {
   async _notifyOwner(myNum) {
     const jid = `${myNum}@s.whatsapp.net`;
     const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
-    const cmdCount = new Set(this.bot.commands.values()).size;
+    const uniqueCount = new Set(this.bot.commands.values()).size;
     const thumbnail = this.bot.config.thumbnail;
 
     const msg = `┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋
@@ -106,7 +109,7 @@ class Client {
 ┃ Account: @${myNum}
 ┃ Prefix: [ ${prefix} ]
 ┃ 
-├─⊷ Modules: ${cmdCount} Active
+├─⊷ Modules: ${uniqueCount} Active
 ├─⊷ Warden: ARMED (Default)
 ├─⊷ Target: OWNER_DM
 ┃

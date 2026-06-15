@@ -1,6 +1,6 @@
 /**
  * @fileOverview Handles group participant changes.
- * v1.2.5: Removed legacy logger to prevent crashes.
+ * v1.2.5: Fixed undefined logger crash.
  */
 export default {
   name: 'group-participants.update',
@@ -10,6 +10,6 @@ export default {
     const { id, participants, action } = data;
     console.log(`==> GROUP: [${action}] in ${id} for ${participants.length} users`);
     
-    // Automation service calls go here
+    // Automation and greetings logic goes here
   }
 };

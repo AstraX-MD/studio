@@ -20,9 +20,13 @@ class CommandLoader {
       const files = fs.readdirSync(categoryPath).filter(f => f.endsWith('.js'));
       
       for (const file of files) {
-        const success = await this.reload(bot, category, file);
-        if (success) loaded++;
-        else failed++;
+        try {
+          const success = await this.reload(bot, category, file);
+          if (success) loaded++;
+          else failed++;
+        } catch (e) {
+          failed++;
+        }
       }
     }
     
@@ -39,6 +43,7 @@ class CommandLoader {
       command.category = category;
       command.fileName = fileName;
       
+      // Cleanup old aliases
       const existing = bot.commands.get(command.name);
       if (existing && existing.aliases) {
         existing.aliases.forEach(alias => bot.commands.delete(alias));

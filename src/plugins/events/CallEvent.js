@@ -1,6 +1,6 @@
 /**
  * @fileOverview Handles incoming WhatsApp calls with Auto-Reject support.
- * v1.2.5: Removed legacy logger to prevent crashes.
+ * v1.2.5: Fixed undefined logger crash.
  */
 export default {
   name: 'call',
@@ -19,7 +19,7 @@ export default {
                             (config?.mode === 'groups' && isGroup);
 
         if (shouldReject) {
-          await bot.client.sock.rejectCall(call.id, call.from);
+          await bot.client.sock.rejectCall(call.id, call.from).catch(() => {});
           
           await bot.client.sock.sendMessage(call.from, { 
             text: `┌──⌈ 📞 SYSTEM ⌋\n┃ Incoming calls are disabled.\n┃ Status: Auto-Rejected\n└────────────────` 

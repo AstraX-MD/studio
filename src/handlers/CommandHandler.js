@@ -36,6 +36,7 @@ class CommandHandler {
 
       // 4. Execution Logic with Fail-Safe
       if (typeof command.execute === 'function') {
+        // WRAP IN TRY-CATCH TO PREVENT CRASHES
         await command.execute(ctx, args);
       } else {
         throw new Error('Command logic missing execute() function.');
