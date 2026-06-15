@@ -1,5 +1,5 @@
 /**
- * @fileOverview Configure simulated typing behavior with a unique AstraX frame design.
+ * @fileOverview Configure simulated typing behavior with a professional boxed design.
  */
 export default {
   name: "autotyping",
@@ -30,21 +30,24 @@ export default {
       await ctx.bot.db.set('automation', 'typing:config', config);
     }
 
-    const output = `┍━━━━━━━━━━━━━━━┑
-   ⌨️ TYPING ENGINE   
-┕━━━━━━━━━━━━━━━┙
-┝  ◌ Mode: ${config.mode.toUpperCase()}
-┝  ◌ Time: ${config.duration}s
-┝  ◌ Custom: ${config.targets.length} Users
-┝━━━━━━━━━━━━━━━
-┝  ▹ ${prefix}autotyping dm
-┝  ▹ ${prefix}autotyping groups
-┝  ▹ ${prefix}autotyping both
-┝  ▹ ${prefix}autotyping off
-┝  ▹ ${prefix}autotyping <1-120>
-┝  ▹ ${prefix}autotyping <number>
-┕━━━━━━━━━━━━━━━
-  © ${botName.toUpperCase()} SYSTEMS`;
+    const output = `┌──⌈ ⌨️ AUTO-TYPING ⌋
+┃
+┃ Mode: ${config.mode === 'off' ? '❌ OFF' : '✅ ' + config.mode.toUpperCase()}
+┃ Time: ${config.duration}s
+┃ Active: ${config.targets.length} Custom
+┃
+├─⊷ ${prefix}autotyping dm
+│  └⊷ All DMs
+├─⊷ ${prefix}autotyping groups
+│  └⊷ All Groups
+├─⊷ ${prefix}autotyping both
+│  └⊷ DMs + Groups
+├─⊷ ${prefix}autotyping <1-120>
+│  └⊷ Set typing duration
+├─⊷ ${prefix}autotyping <number>
+│  └⊷ Target specific user
+└────────────────
+  © ${botName.toUpperCase()}`;
 
     ctx.reply(output);
   }

@@ -1,5 +1,5 @@
 /**
- * @fileOverview Toggle automatic read receipts with a unique AstraX frame design.
+ * @fileOverview Toggle automatic read receipts with a professional boxed design.
  */
 export default {
   name: "autoread",
@@ -26,20 +26,24 @@ export default {
       await ctx.bot.db.set('automation', 'read:config', config);
     }
 
-    const output = `┍━━━━━━━━━━━━━━━┑
-   ✅ BLUE TICK HUB   
-┕━━━━━━━━━━━━━━━┙
-┝  ◌ Mode: ${config.mode.toUpperCase()}
-┝  ◌ Scope: ALL CHATS
-┝  ◌ Custom: ${config.targets.length} Users
-┝━━━━━━━━━━━━━━━
-┝  ▹ ${prefix}autoread dm
-┝  ▹ ${prefix}autoread groups
-┝  ▹ ${prefix}autoread both
-┝  ▹ ${prefix}autoread off
-┝  ▹ ${prefix}autoread <number>
-┕━━━━━━━━━━━━━━━
-  © ${botName.toUpperCase()} SYSTEMS`;
+    const output = `┌──⌈ ✅ AUTO-READ ⌋
+┃
+┃ Mode: ${config.mode === 'off' ? '❌ OFF' : '✅ ' + config.mode.toUpperCase()}
+┃ Scope: ${config.mode.toUpperCase()}
+┃ Active: ${config.targets.length} Custom
+┃
+├─⊷ ${prefix}autoread dm
+│  └⊷ Auto-read in DMs
+├─⊷ ${prefix}autoread groups
+│  └⊷ Auto-read in Groups
+├─⊷ ${prefix}autoread both
+│  └⊷ Read all messages
+├─⊷ ${prefix}autoread off
+│  └⊷ Disable feature
+├─⊷ ${prefix}autoread <number>
+│  └⊷ Specific user targeting
+└────────────────
+  © ${botName.toUpperCase()}`;
 
     ctx.reply(output);
   }

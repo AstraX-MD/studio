@@ -1,5 +1,5 @@
 /**
- * @fileOverview Configure simulated audio recording status with a unique AstraX frame design.
+ * @fileOverview Configure simulated audio recording with a professional boxed design.
  */
 export default {
   name: "autorecord",
@@ -30,21 +30,24 @@ export default {
       await ctx.bot.db.set('automation', 'record:config', config);
     }
 
-    const output = `┍━━━━━━━━━━━━━━━┑
-   🎙️ RECORDING HUB   
-┕━━━━━━━━━━━━━━━┙
-┝  ◌ Mode: ${config.mode.toUpperCase()}
-┝  ◌ Time: ${config.duration}s
-┝  ◌ Custom: ${config.targets.length} Users
-┝━━━━━━━━━━━━━━━
-┝  ▹ ${prefix}autorecord dm
-┝  ▹ ${prefix}autorecord groups
-┝  ▹ ${prefix}autorecord both
-┝  ▹ ${prefix}autorecord off
-┝  ▹ ${prefix}autorecord <1-120>
-┝  ▹ ${prefix}autorecord <number>
-┕━━━━━━━━━━━━━━━
-  © ${botName.toUpperCase()} SYSTEMS`;
+    const output = `┌──⌈ 🎙️ AUTO-RECORD ⌋
+┃
+┃ Mode: ${config.mode === 'off' ? '❌ OFF' : '✅ ' + config.mode.toUpperCase()}
+┃ Time: ${config.duration}s
+┃ Active: ${config.targets.length} Custom
+┃
+├─⊷ ${prefix}autorecord dm
+│  └⊷ All DMs
+├─⊷ ${prefix}autorecord groups
+│  └⊷ All Groups
+├─⊷ ${prefix}autorecord both
+│  └⊷ DMs + Groups
+├─⊷ ${prefix}autorecord <1-120>
+│  └⊷ Set recording duration
+├─⊷ ${prefix}autorecord <number>
+│  └⊷ Target specific user
+└────────────────
+  © ${botName.toUpperCase()}`;
 
     ctx.reply(output);
   }
