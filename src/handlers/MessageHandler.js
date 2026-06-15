@@ -1,5 +1,5 @@
 /**
- * @fileOverview Inbound message router with integrated Automation Hub.
+ * @fileOverview Inbound message router with integrated Granular Automation Hub.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -14,8 +14,8 @@ class MessageHandler {
     // 1. Basic sanity checks
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') {
       if (msg.key.remoteJid === 'status@broadcast') {
-        const viewConfig = await this.bot.db.get('automation', 'viewstatus');
-        if (viewConfig?.enabled) {
+        const config = await this.bot.db.get('automation', 'status:config');
+        if (config?.mode === 'on') {
           await this.bot.client.sock.readMessages([msg.key]);
           this.bot.logger.info(`Status viewed: ${msg.pushName || msg.key.participant}`);
         }
@@ -53,48 +53,54 @@ class MessageHandler {
   }
 
   /**
-   * Applies automation settings for the current context.
+   * Applies automation settings based on mode, type, and target lists.
    */
   async applyAutomation(ctx) {
     try {
-      const senderId = ctx.sender.split('@')[0];
       const jid = ctx.jid;
+      const sender = ctx.sender;
       const isGroup = ctx.isGroup;
 
-      // 1. Auto Read (Blue Tick)
-      const readAll = await this.bot.db.get('automation', 'read:all');
-      const readType = await this.bot.db.get('automation', isGroup ? 'read:groups' : 'read:dm');
-      if (readAll?.enabled || readType?.enabled) {
+      const checkActive = (config) => {
+        if (!config || config.mode === 'off') return false;
+        if (config.targets?.includes(sender)) return true;
+        if (config.mode === 'both') return true;
+        if (config.mode === 'dm' && !isGroup) return true;
+        if (config.mode === 'groups' && isGroup) return true;
+        return false;
+      };
+
+      // 1. Auto Read
+      const readConfig = await this.bot.db.get('automation', 'read:config');
+      if (checkActive(readConfig)) {
         await this.bot.client.sock.readMessages([ctx.msg.key]);
       }
 
       // 2. Auto React
-      const reactConfig = await this.bot.db.get('automation', `react:all`) || 
-                          await this.bot.db.get('automation', `react:${senderId}`);
-      if (reactConfig?.enabled && reactConfig.emojis?.length > 0) {
-        const emoji = reactConfig.emojis[Math.floor(Math.random() * reactConfig.emojis.length)];
+      const reactConfig = await this.bot.db.get('automation', 'react:config');
+      if (checkActive(reactConfig)) {
+        const emojis = reactConfig.emojis || ['🔥'];
+        const emoji = emojis[Math.floor(Math.random() * emojis.length)];
         await ctx.react(emoji).catch(() => {});
       }
 
-      // 3. Presence Automation (Typing/Recording)
-      const typeConfig = await this.bot.db.get('automation', `typing:all`) || 
-                         await this.bot.db.get('automation', `typing:${senderId}`);
-      const recConfig = await this.bot.db.get('automation', `record:all`) || 
-                        await this.bot.db.get('automation', `record:${senderId}`);
-
-      if (typeConfig?.enabled) {
+      // 3. Presence Automation (Typing)
+      const typeConfig = await this.bot.db.get('automation', 'typing:config');
+      if (checkActive(typeConfig)) {
         await this.bot.client.sock.sendPresenceUpdate('composing', jid);
         await new Promise(r => setTimeout(r, (typeConfig.duration || 5) * 1000));
         await this.bot.client.sock.sendPresenceUpdate('paused', jid);
       }
 
-      if (recConfig?.enabled) {
+      // 4. Presence Automation (Recording)
+      const recConfig = await this.bot.db.get('automation', 'record:config');
+      if (checkActive(recConfig)) {
         await this.bot.client.sock.sendPresenceUpdate('recording', jid);
-        await new Promise(r => setTimeout(r, (recConfig.duration || 5) * 1000));
+        await new Promise(r => setTimeout(r, (recConfig.duration || 10) * 1000));
         await this.bot.client.sock.sendPresenceUpdate('paused', jid);
       }
     } catch (e) {
-      this.bot.logger.error(`Automation error: ${e.message}`);
+      this.bot.logger.error(`Automation Hub Error: ${e.message}`);
     }
   }
 }

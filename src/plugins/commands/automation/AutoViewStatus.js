@@ -1,5 +1,5 @@
 /**
- * @fileOverview Toggle automatic status viewing.
+ * @fileOverview Toggle automatic status viewing and logging.
  */
 export default {
   name: "autoviewstatus",
@@ -10,16 +10,28 @@ export default {
   permissions: 9,
   execute: async (ctx, args) => {
     const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
-    const state = args[0]?.toLowerCase() === 'on';
+    const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
+    
+    const config = (await ctx.bot.db.get('automation', 'status:config')) || { mode: 'off' };
+    const input = args[0]?.toLowerCase();
 
-    await ctx.bot.db.set('automation', 'viewstatus', { enabled: state });
+    if (input === 'on' || input === 'off') {
+      config.mode = input;
+      await ctx.bot.db.set('automation', 'status:config', config);
+    }
 
-    const output = `┌──⌈ 👁️ STATUS VIEW ⌋
-┃ 
-┃ Status: ${state ? 'ACTIVE' : 'INACTIVE'}
-┃ Action: Read & Log
-┃ 
-└─ 🌌 ${botName.toUpperCase()}`;
+    const output = `╭─⌈ 👁️ *AUTO-STATUS* ⌋
+│
+│ Mode: ${config.mode === 'on' ? '✅ ACTIVE' : '❌ INACTIVE'}
+│ Action: Auto View & Log
+│ Scope: All Contacts
+│
+├─⊷ *${prefix}autoviewstatus on*
+│  └⊷ View all incoming statuses
+├─⊷ *${prefix}autoviewstatus off*
+│  └⊷ Disable status viewing
+│
+╰⊷ 🌌 *Powered by ${botName.toUpperCase()}*`;
 
     ctx.reply(output);
   }
