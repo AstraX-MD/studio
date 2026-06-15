@@ -10,6 +10,7 @@ import EventHandler from '../handlers/EventHandler.js';
 import DatabaseManager from '../database/DatabaseManager.js';
 import RoleManager from '../managers/RoleManager.js';
 import SettingsManager from '../managers/SettingsManager.js';
+import MemoryManager from '../managers/MemoryManager.js';
 import config from '../configs/default.js';
 import pino from 'pino';
 
@@ -27,7 +28,8 @@ class Bot {
     // Core Managers
     this.managers = {
       roles: new RoleManager(this),
-      settings: new SettingsManager(this)
+      settings: new SettingsManager(this),
+      memory: new MemoryManager(this)
     };
 
     // Central Handlers
@@ -58,6 +60,26 @@ class Bot {
     
     this.isReady = true;
     this.logger.info('AstraX Core is Online.');
+  }
+
+  /**
+   * Returns a concise manifest of all available commands for the AI Agent.
+   */
+  getCommandManifest() {
+    const manifest = [];
+    const seen = new Set();
+    
+    for (const cmd of this.commands.values()) {
+      if (seen.has(cmd.name)) continue;
+      seen.add(cmd.name);
+      manifest.push({
+        name: cmd.name,
+        description: cmd.description,
+        usage: cmd.usage,
+        category: cmd.category
+      });
+    }
+    return manifest;
   }
 
   async _checkExpiration() {
