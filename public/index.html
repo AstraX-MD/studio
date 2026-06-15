@@ -3,111 +3,80 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AstraX Enterprise | Console</title>
+    <title>AstraX Enterprise | Public Dashboard</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Space Grotesk', sans-serif; background: #050406; color: white; }
-        .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .glow { box-shadow: 0 0 20px rgba(151, 71, 255, 0.2); }
+        body { font-family: 'Space Grotesk', sans-serif; background: #050406; color: #fff; }
+        .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.1); backdrop-filter: blur(10px); }
+        .glow { box-shadow: 0 0 20px rgba(151, 71, 255, 0.3); }
+        .primary-text { color: #9747FF; }
     </style>
 </head>
-<body class="p-6">
-    <div class="max-w-6xl mx-auto space-y-8">
-        <header class="flex justify-between items-center glass p-6 rounded-3xl glow">
+<body class="p-6 md:p-12">
+    <div class="max-w-6xl mx-auto space-y-12">
+        <!-- Header -->
+        <div class="flex flex-col md:flex-row justify-between items-center gap-6">
             <div>
-                <h1 class="text-4xl font-bold text-primary tracking-tighter">ASTRAX <span class="text-white opacity-40">CONSOLE</span></h1>
-                <p class="text-sm text-gray-500 mt-1 uppercase tracking-widest">Enterprise Node v1.2.5</p>
+                <h1 class="text-5xl font-bold tracking-tighter">ASTRAX <span class="primary-text">EXPERT</span></h1>
+                <p class="text-gray-500 uppercase tracking-widest text-xs mt-2">v1.2.5 Operational Node</p>
             </div>
-            <div id="status" class="px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-500 rounded-full text-xs font-bold uppercase tracking-widest animate-pulse">
-                Synchronizing...
-            </div>
-        </header>
-
-        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
-            <div class="glass p-6 rounded-3xl space-y-2">
-                <p class="text-xs text-gray-500 uppercase">Memory Usage</p>
-                <h2 id="ram" class="text-3xl font-bold font-mono">0.0%</h2>
-            </div>
-            <div class="glass p-6 rounded-3xl space-y-2">
-                <p class="text-xs text-gray-500 uppercase">Uptime</p>
-                <h2 id="uptime" class="text-3xl font-bold font-mono">0s</h2>
-            </div>
-            <div class="glass p-6 rounded-3xl space-y-2">
-                <p class="text-xs text-gray-500 uppercase">Active Logic</p>
-                <h2 id="cmds" class="text-3xl font-bold font-mono">0</h2>
+            <div class="flex gap-4">
+                <div class="glass px-6 py-3 rounded-2xl flex items-center gap-3">
+                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
+                    <span class="text-sm font-bold uppercase">Cloud Online</span>
+                </div>
             </div>
         </div>
 
-        <div class="glass p-8 rounded-3xl space-y-6">
-            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
-                <h3 class="text-xl font-bold">Module Marketplace</h3>
-                <div class="relative w-full max-w-md flex gap-2">
-                    <input id="searchInput" type="text" placeholder="Search commands or aliases..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors">
-                    <button id="searchBtn" class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-xl text-sm font-bold transition-all">SEARCH</button>
-                </div>
+        <!-- Search Hub -->
+        <div class="glass p-8 rounded-3xl space-y-6 glow">
+            <h2 class="text-2xl font-bold">Plugin Marketplace</h2>
+            <div class="flex gap-3">
+                <input type="text" id="searchInput" placeholder="Search by name, alias or category (e.g. 'play', 'ai')..." 
+                    class="w-full bg-white/5 border border-white/10 rounded-xl px-6 py-4 outline-none focus:border-purple-500 transition-all">
+                <button onclick="filterCommands()" class="bg-[#9747FF] px-8 rounded-xl font-bold hover:opacity-80 transition-all">SEARCH</button>
             </div>
-            <div id="commandGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
-                <!-- Commands injected here -->
+            <div id="commandGrid" class="grid grid-cols-1 md:grid-cols-3 gap-4">
+                <!-- Commands inject here -->
             </div>
         </div>
     </div>
 
     <script>
-        let allCommands = [];
+        const commands = [
+            { name: 'gpt4', aliases: ['openai', 'ai'], desc: 'Advanced AI reasoning swarm.' },
+            { name: 'play', aliases: ['song', 'ytmp3'], desc: 'High-speed music downloader.' },
+            { name: 'tiktok', aliases: ['tt', 'ttdl'], desc: 'Watermark-free video downloader.' },
+            { name: 'imagine', aliases: ['draw', 'flux'], desc: 'High-fidelity AI image generation.' },
+            { name: 'warden', aliases: ['security'], desc: 'Stealth monitoring and protection.' },
+            { name: 'economy', aliases: ['bank', 'bal'], desc: 'Global financial RPG system.' }
+        ];
 
-        async function fetchStatus() {
-            try {
-                const res = await fetch('/api/status');
-                const data = await res.json();
-                document.getElementById('ram').innerText = data.ramUsage;
-                document.getElementById('uptime').innerText = data.uptime + 's';
-                document.getElementById('cmds').innerText = data.commands;
-                document.getElementById('status').innerText = 'Bot ' + data.status;
-            } catch(e) {}
-        }
-
-        async function fetchCommands() {
-            // Simulated manifest fetch
-            allCommands = [
-                { name: 'play', desc: 'Download YouTube audio with 30 fallbacks.', aliases: ['song', 'ytmp3'] },
-                { name: 'gpt4', desc: 'Advanced AI reasoning via global proxies.', aliases: ['ask', 'ai'] },
-                { name: 'tiktok', desc: 'No-watermark TikTok downloader.', aliases: ['tt', 'ttdl'] },
-                { name: 'balance', desc: 'Check your enterprise bank account.', aliases: ['bal', 'wallet'] },
-                { name: 'warden', desc: 'Access security protocol dashboard.', aliases: ['security'] }
-            ];
-            renderCommands(allCommands);
-        }
-
-        function renderCommands(list) {
+        function render(list) {
             const grid = document.getElementById('commandGrid');
-            grid.innerHTML = list.map(cmd => `
-                <div class="glass p-5 rounded-2xl hover:border-purple-500/50 transition-all cursor-pointer group">
-                    <div class="flex justify-between items-start">
-                        <h4 class="font-bold text-lg text-purple-400">!${cmd.name}</h4>
-                        <span class="text-[10px] bg-white/5 px-2 py-1 rounded-md text-gray-500 uppercase">v1.2.5</span>
-                    </div>
-                    <p class="text-xs text-gray-400 mt-2 leading-relaxed">${cmd.desc}</p>
+            grid.innerHTML = list.map(c => `
+                <div class="glass p-6 rounded-2xl border-l-4 border-purple-500">
+                    <h3 class="font-bold text-lg">!${c.name}</h3>
+                    <p class="text-gray-400 text-sm mt-1">${c.desc}</p>
                     <div class="mt-4 flex gap-2 flex-wrap">
-                        ${cmd.aliases.map(a => `<span class="text-[9px] border border-white/5 px-2 py-0.5 rounded text-gray-500">#${a}</span>`).join('')}
+                        ${c.aliases.map(a => `<span class="text-[10px] bg-white/5 px-2 py-1 rounded-md text-purple-400 font-bold uppercase">${a}</span>`).join('')}
                     </div>
                 </div>
             `).join('');
         }
 
-        document.getElementById('searchBtn').onclick = () => {
+        function filterCommands() {
             const query = document.getElementById('searchInput').value.toLowerCase();
-            const filtered = allCommands.filter(c => 
+            const filtered = commands.filter(c => 
                 c.name.includes(query) || 
-                c.desc.toLowerCase().includes(query) || 
-                c.aliases.some(a => a.includes(query))
+                c.aliases.some(a => a.includes(query)) || 
+                c.desc.toLowerCase().includes(query)
             );
-            renderCommands(filtered);
-        };
+            render(filtered);
+        }
 
-        setInterval(fetchStatus, 3000);
-        fetchCommands();
-        fetchStatus();
+        render(commands);
     </script>
 </body>
 </html>
