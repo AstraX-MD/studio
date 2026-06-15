@@ -1,6 +1,6 @@
 /**
- * @fileOverview Inbound message router with High-Visibility Logging.
- * v1.2.5: Optimized for instant command detection and self-reply support.
+ * @fileOverview Inbound message router with Expert Level Logging.
+ * v1.2.5-EXPERT: Deleted all fromMe guards. Bot responds to itself.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -31,7 +31,7 @@ class MessageHandler {
     console.log(`┃ ${logHeader.padEnd(20)} | Content: ${ctx.text.substring(0, 50)}${ctx.text.length > 50 ? '...' : ''}`);
 
     // 2. RECURSIVE LOOP GUARD
-    // Prevent the bot from replying to its own formatted reports.
+    // Only skip if the content is one of our own BOXED frames.
     if (ctx.fromMe && (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌') || ctx.text.includes('├─⊷'))) {
        return; 
     }
@@ -50,11 +50,13 @@ class MessageHandler {
     } else {
       // Hybrid detection: check if first word is a registered command
       const parts = ctx.text.trim().split(/ +/);
-      const possibleCmd = parts.shift().toLowerCase();
-      if (this.bot.commands.has(possibleCmd)) {
-        isCommand = true;
-        commandName = possibleCmd;
-        args = parts;
+      if (parts.length > 0) {
+        const possibleCmd = parts.shift().toLowerCase();
+        if (this.bot.commands.has(possibleCmd)) {
+          isCommand = true;
+          commandName = possibleCmd;
+          args = parts;
+        }
       }
     }
 
@@ -68,8 +70,8 @@ class MessageHandler {
       }
     }
 
-    // 5. AI Agent Fallback (Only for others to save tokens)
-    if (this.agent && !ctx.fromMe && ctx.text.length > 1) {
+    // 5. AI Agent Fallback
+    if (this.agent && ctx.text.length > 1) {
       await this.applyAgent(ctx);
     }
   }

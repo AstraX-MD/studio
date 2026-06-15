@@ -1,6 +1,6 @@
 /**
  * @fileOverview The main orchestrator for the AstraX framework.
- * v1.2.5: Standardized for absolute stability and boxed telemetry.
+ * v1.2.5-EXPERT: Optimized for absolute stability and expert telemetry.
  */
 import Client from './Client.js';
 import CommandLoader from '../loaders/CommandLoader.js';
@@ -58,12 +58,13 @@ class Bot {
       this.isReady = true;
       
       const prefix = await this.managers.settings.get('core', 'prefix') || '!';
-      const uniqueCmds = new Set(this.commands.values()).size;
+      const uniqueCount = new Set(this.commands.values()).size;
+      const triggerCount = this.commands.size;
 
       console.log(`\n┌──⌈ ⚙️ SYSTEM READY ⌋`);
       console.log(`┃ Prefix: [ ${prefix} ]`);
-      console.log(`┃ Modules: ${uniqueCmds} Unique`);
-      console.log(`┃ Events: ${this.events.size} Active`);
+      console.log(`┃ Unique Logic: ${uniqueCount} Modules`);
+      console.log(`┃ Active Triggers: ${triggerCount} (inc. Aliases)`);
       console.log(`┃ Status: LISTENING...`);
       console.log(`└─────────────────────\n`);
     } catch (error) {

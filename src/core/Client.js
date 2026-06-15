@@ -1,6 +1,6 @@
 /**
  * @fileOverview Baileys socket wrapper with v1.2.5 Absolute Stability.
- * Optimized to prevent Timeouts (408) and resolve Auto-Owner.
+ * v1.2.5-EXPERT: Disabled history syncing to prevent 408 Timeouts.
  */
 import makeWASocket, { 
   useMultiFileAuthState, 
@@ -48,9 +48,8 @@ class Client {
       browser: Browsers.ubuntu('Chrome'),
       markOnlineOnConnect: true,
       generateHighQualityLinkPreview: true,
-      syncFullHistory: false, // PREVENT TIMEOUTS
-      linkPreviewImageThumbnailWidth: 600,
-      shouldSyncHistoryMessage: () => false // PREVENT TIMEOUTS
+      syncFullHistory: false, // PREVENT 408 TIMEOUTS
+      shouldSyncHistoryMessage: () => false // PREVENT 408 TIMEOUTS
     });
 
     this.sock.ev.on('creds.update', saveCreds);
@@ -109,9 +108,9 @@ class Client {
 ┃ Account: @${myNum}
 ┃ Prefix: [ ${prefix} ]
 ┃ 
-├─⊷ Modules: ${uniqueCount} Active
-├─⊷ Warden: ARMED (Default)
-├─⊷ Target: OWNER_DM
+├─⊷ Modules: ${uniqueCount} Logic Blocks
+├─⊷ Warden: ARMED
+├─⊷ Mode: PUBLIC_ACTIVE
 ┃
 ┃ Use ${prefix}help to begin.
 └────────────────`;

@@ -3,39 +3,53 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AstraX Enterprise | Public Dashboard</title>
+    <title>AstraX Enterprise | Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;400;500;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Space Grotesk', sans-serif; background-color: #050406; color: white; }
+        body { font-family: 'Space Grotesk', sans-serif; background: #050406; color: white; }
         .glass { background: rgba(255, 255, 255, 0.03); backdrop-filter: blur(10px); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .glow { box-shadow: 0 0 20px -5px rgba(151, 71, 255, 0.5); }
+        .glow { box-shadow: 0 0 20px rgba(151, 71, 255, 0.2); }
     </style>
 </head>
 <body class="p-6">
     <div class="max-w-6xl mx-auto space-y-8">
-        <header class="flex justify-between items-center">
+        <header class="flex justify-between items-center glass p-6 rounded-3xl glow">
             <div>
-                <h1 class="text-4xl font-bold text-white tracking-tighter">ASTRAX <span class="text-purple-500">ENTERPRISE</span></h1>
-                <p class="text-gray-400 text-sm">v1.2.5 Public Management Console</p>
+                <h1 class="text-4xl font-bold text-primary tracking-tighter">ASTRAX <span class="text-white opacity-40">CONSOLE</span></h1>
+                <p class="text-sm text-gray-500 mt-1 uppercase tracking-widest">Enterprise Node v1.2.5</p>
             </div>
-            <div class="flex gap-4">
-                <div class="px-4 py-2 glass rounded-full flex items-center gap-2">
-                    <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-                    <span class="text-[10px] font-bold uppercase tracking-widest">Node Stable</span>
-                </div>
+            <div id="status" class="px-4 py-2 bg-green-500/10 border border-green-500/20 text-green-500 rounded-full text-xs font-bold uppercase tracking-widest animate-pulse">
+                Synchronizing...
             </div>
         </header>
 
-        <section class="space-y-4">
-            <div class="flex flex-col md:flex-row gap-4 items-center">
-                <input type="text" id="searchInput" placeholder="Search commands or aliases (e.g. 'play')..." class="w-full h-12 bg-white/5 border border-white/10 rounded-xl px-6 focus:outline-none focus:border-purple-500 transition-colors">
-                <button onclick="performSearch()" class="h-12 px-8 bg-purple-600 rounded-xl font-bold hover:bg-purple-500 transition-all glow">SEARCH</button>
+        <div class="grid grid-cols-1 md:grid-cols-3 gap-6">
+            <div class="glass p-6 rounded-3xl space-y-2">
+                <p class="text-xs text-gray-500 uppercase">Memory Usage</p>
+                <h2 id="ram" class="text-3xl font-bold font-mono">0.0%</h2>
             </div>
-        </section>
+            <div class="glass p-6 rounded-3xl space-y-2">
+                <p class="text-xs text-gray-500 uppercase">Uptime</p>
+                <h2 id="uptime" class="text-3xl font-bold font-mono">0s</h2>
+            </div>
+            <div class="glass p-6 rounded-3xl space-y-2">
+                <p class="text-xs text-gray-500 uppercase">Active Logic</p>
+                <h2 id="cmds" class="text-3xl font-bold font-mono">0</h2>
+            </div>
+        </div>
 
-        <div id="commandGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-            <!-- Commands injected here -->
+        <div class="glass p-8 rounded-3xl space-y-6">
+            <div class="flex flex-col md:flex-row gap-4 items-center justify-between">
+                <h3 class="text-xl font-bold">Module Marketplace</h3>
+                <div class="relative w-full max-w-md flex gap-2">
+                    <input id="searchInput" type="text" placeholder="Search commands or aliases..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-purple-500 transition-colors">
+                    <button id="searchBtn" class="bg-purple-600 hover:bg-purple-700 px-6 py-3 rounded-xl text-sm font-bold transition-all">SEARCH</button>
+                </div>
+            </div>
+            <div id="commandGrid" class="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-4">
+                <!-- Commands injected here -->
+            </div>
         </div>
     </div>
 
@@ -46,18 +60,53 @@
             try {
                 const res = await fetch('/api/status');
                 const data = await res.json();
-                // In a real app we'd fetch actual command details
-                // For MVP we mock the UI update
-            } catch (e) {}
+                document.getElementById('ram').innerText = data.ramUsage;
+                document.getElementById('uptime').innerText = data.uptime + 's';
+                document.getElementById('cmds').innerText = data.commands;
+                document.getElementById('status').innerText = 'Bot ' + data.status;
+            } catch(e) {}
         }
 
-        function performSearch() {
+        async function fetchCommands() {
+            // Simulated manifest fetch
+            allCommands = [
+                { name: 'play', desc: 'Download YouTube audio with 30 fallbacks.', aliases: ['song', 'ytmp3'] },
+                { name: 'gpt4', desc: 'Advanced AI reasoning via global proxies.', aliases: ['ask', 'ai'] },
+                { name: 'tiktok', desc: 'No-watermark TikTok downloader.', aliases: ['tt', 'ttdl'] },
+                { name: 'balance', desc: 'Check your enterprise bank account.', aliases: ['bal', 'wallet'] },
+                { name: 'warden', desc: 'Access security protocol dashboard.', aliases: ['security'] }
+            ];
+            renderCommands(allCommands);
+        }
+
+        function renderCommands(list) {
+            const grid = document.getElementById('commandGrid');
+            grid.innerHTML = list.map(cmd => `
+                <div class="glass p-5 rounded-2xl hover:border-purple-500/50 transition-all cursor-pointer group">
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-bold text-lg text-purple-400">!${cmd.name}</h4>
+                        <span class="text-[10px] bg-white/5 px-2 py-1 rounded-md text-gray-500 uppercase">v1.2.5</span>
+                    </div>
+                    <p class="text-xs text-gray-400 mt-2 leading-relaxed">${cmd.desc}</p>
+                    <div class="mt-4 flex gap-2 flex-wrap">
+                        ${cmd.aliases.map(a => `<span class="text-[9px] border border-white/5 px-2 py-0.5 rounded text-gray-500">#${a}</span>`).join('')}
+                    </div>
+                </div>
+            `).join('');
+        }
+
+        document.getElementById('searchBtn').onclick = () => {
             const query = document.getElementById('searchInput').value.toLowerCase();
-            console.log('Searching for:', query);
-            // Frontend filtering logic here
-            alert('Search activated for: ' + query);
-        }
+            const filtered = allCommands.filter(c => 
+                c.name.includes(query) || 
+                c.desc.toLowerCase().includes(query) || 
+                c.aliases.some(a => a.includes(query))
+            );
+            renderCommands(filtered);
+        };
 
+        setInterval(fetchStatus, 3000);
+        fetchCommands();
         fetchStatus();
     </script>
 </body>
