@@ -1,12 +1,12 @@
 /**
- * @fileOverview Main Entry Menu (Help).
+ * @fileOverview Directory of all specialized menus.
  */
 export default {
-  name: "help",
-  aliases: ["h", "menu"],
+  name: "allmenu",
+  aliases: ["menus", "directory"],
   category: "utility",
-  description: "Display the main dashboard overview.",
-  usage: "help",
+  description: "List all specialized sub-menus for easier navigation.",
+  usage: "allmenu",
   cooldown: 5,
   permissions: 1,
   execute: async (ctx) => {
@@ -14,25 +14,28 @@ export default {
     const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
     const thumbnail = ctx.bot.config.thumbnail;
 
-    let output = `┌──⌈ ${botName.toUpperCase()} ⌋
-┃ User: ${ctx.pushName}
-┃ Prefix: [ ${prefix} ]
-┃ Status: ACTIVE
-┃
-┃ 📚 MAIN CATEGORIES:
+    const output = `┌──⌈ 📑 MENU DIRECTORY ⌋
 ┃
 ├─⊷ ${prefix}adminmenu
 ├─⊷ ${prefix}aimenu
+├─⊷ ${prefix}animemenu
+├─⊷ ${prefix}automationmenu
+├─⊷  ${prefix}convertermenu
 ├─⊷ ${prefix}economymenu
+├─⊷ ${prefix}educationmenu
+├─⊷ ${prefix}footballmenu
 ├─⊷ ${prefix}funmenu
+├─⊷ ${prefix}logomenu
 ├─⊷ ${prefix}musicmenu
 ├─⊷ ${prefix}photomenu
+├─⊷ ${prefix}profilemenu
 ├─⊷ ${prefix}securitymenu
 ├─⊷ ${prefix}stalkermenu
+├─⊷ ${prefix}sudomenu
 ├─⊷ ${prefix}toolmenu
+├─⊷ ${prefix}utilitymenu
 ┃
-┃ Use ${prefix}allmenu to see
-┃ every sub-directory.
+┃ Tip: Use ${prefix}help for all
 └────────────────
   © ${botName.toUpperCase()}`;
 

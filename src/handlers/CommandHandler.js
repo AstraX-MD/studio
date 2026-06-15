@@ -1,6 +1,6 @@
 /**
  * @fileOverview Executes command logic and handles permissions/errors.
- * Updated with Cooldown and Premium logic.
+ * Updated with Disable/Enable check.
  */
 import PermissionMiddleware from '../middleware/PermissionMiddleware.js';
 import CooldownManager from '../managers/CooldownManager.js';
@@ -13,11 +13,17 @@ class CommandHandler {
 
   async execute(command, ctx, args) {
     try {
-      // 1. Permission Validation
+      // 1. Global Disable Check
+      const disabledList = await this.bot.db.get('settings', 'disabledCommands') || [];
+      if (disabledList.includes(command.name)) {
+        return await ctx.reply(`┌──⌈ 🚫 COMMAND DISABLED ⌋\n┃ \n┃ This command is currently\n┃ restricted by the administrator.\n┃ \n└─ 🌌 ${this.bot.config.name.toUpperCase()}`);
+      }
+
+      // 2. Permission Validation
       const isAllowed = await PermissionMiddleware.validate(this.bot, command, ctx);
       if (!isAllowed) return;
 
-      // 2. Cooldown Validation
+      // 3. Cooldown Validation
       const remaining = this.cooldownManager.getRemainingCooldown(
         ctx.sender, 
         command.name, 
@@ -28,7 +34,7 @@ class CommandHandler {
         return await ctx.reply(`⏳ *Wait a moment*\n\nYou are on cooldown. Try again in ${remaining}s.`);
       }
 
-      // 3. Execution
+      // 4. Execution
       await command.execute(ctx, args);
       
       this.bot.logger.info(`Command Executed: [${command.name}] by ${ctx.sender}`);
