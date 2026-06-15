@@ -1,7 +1,7 @@
 /**
  * @fileOverview Inbound message router with Expert Level Logging.
- * v1.2.5-EXPERT: Deleted all fromMe guards. Bot responds to itself.
- * FIXED: Added null-safety to prevent split error.
+ * v1.2.5-EXPERT: Zero fromMe restrictions. 100% Self-Response.
+ * Version: Standardized Stability Core.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -26,13 +26,14 @@ class MessageHandler {
 
     const ctx = new Context(this.bot, msg);
     
-    // 1. High-Visibility Terminal Logger (Null-Safe)
-    const senderId = ctx.sender ? ctx.sender.split('@')[0] : 'SYSTEM';
+    // 1. High-Visibility Terminal Logger (Null-Safe Expert Style)
+    const senderId = ctx.sender ? ctx.sender.split('@')[0] : 'SYSTEM_NODE';
     const logHeader = `[INBOUND] @${senderId}`;
-    console.log(`┃ ${logHeader.padEnd(20)} | Content: ${ctx.text.substring(0, 50)}${ctx.text.length > 50 ? '...' : ''}`);
+    const logContent = ctx.text ? ctx.text.substring(0, 50) : '[MEDIA_PAYLOAD]';
+    console.log(`┃ ${logHeader.padEnd(20)} | Content: ${logContent}${logContent.length > 50 ? '...' : ''}`);
 
     // 2. RECURSIVE LOOP GUARD
-    // Only skip if the content is one of our own BOXED frames.
+    // Prevent the bot from answering its own "Boxed Frames" to avoid feedback loops.
     if (ctx.fromMe && (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌') || ctx.text.includes('├─⊷'))) {
        return; 
     }
@@ -49,7 +50,7 @@ class MessageHandler {
       args = fullContent.split(/ +/);
       commandName = args.shift().toLowerCase();
     } else {
-      // Hybrid detection: check if first word is a registered command
+      // Hybrid detection: check if first word is a registered command (Expert convenience)
       const parts = ctx.text.trim().split(/ +/);
       if (parts.length > 0) {
         const possibleCmd = parts.shift().toLowerCase();
@@ -71,7 +72,7 @@ class MessageHandler {
       }
     }
 
-    // 5. AI Agent Fallback
+    // 5. AI Agent Fallback (Optional / Contextual)
     if (this.agent && ctx.text.length > 1) {
       await this.applyAgent(ctx);
     }

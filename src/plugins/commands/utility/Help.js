@@ -33,12 +33,12 @@ export default {
     let output = `┌──⌈ ${botName.toUpperCase()} ⌋
 ┃ User: ${ctx.pushName}
 ┃ Prefix: [ ${prefix} ]
-┃ Status: ACTIVE
+┃ Status: ACTIVE_24/7
 ┃ Modules: ${uniqueCommands.length}
 ┃\n`;
 
     // Professional Categorization
-    const displayCats = ['admin', 'ai-chat', 'ai-image', 'economy', 'downloaders', 'logos', 'tools', 'security', 'utility'];
+    const displayCats = ['admin', 'ai-chat', 'ai-image', 'economy', 'downloaders', 'logos', 'reactions', 'tools', 'security', 'utility'];
     
     displayCats.forEach(cat => {
       if (categories[cat]) {

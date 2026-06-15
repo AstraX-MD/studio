@@ -1,6 +1,7 @@
 /**
  * @fileOverview Baileys socket wrapper with v1.2.5 Absolute Stability.
- * v1.2.5-EXPERT: Disabled history syncing to prevent 408 Timeouts.
+ * v1.2.5-EXPERT: Optimized for 24/7 Cloud Persistence.
+ * Version: Baileys 6.7.22 (Enforced)
  */
 import makeWASocket, { 
   useMultiFileAuthState, 
@@ -40,18 +41,37 @@ class Client {
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
-    const { version } = await fetchLatestBaileysVersion();
 
     this.sock = makeWASocket({
       auth: state,
-      version,
       printQRInTerminal: false,
       logger: pino({ level: 'silent' }),
       browser: Browsers.ubuntu('Chrome'),
       markOnlineOnConnect: true,
       generateHighQualityLinkPreview: true,
-      syncFullHistory: false, // PREVENT 408 TIMEOUTS
-      shouldSyncHistoryMessage: () => false // PREVENT 408 TIMEOUTS
+      syncFullHistory: false, // PREVENT 408 TIMEOUTS & BAD MAC
+      shouldSyncHistoryMessage: () => false, // PREVENT 408 TIMEOUTS
+      patchMessageBeforeSending: (message) => {
+        const requiresPatch = !!(
+          message.buttonsMessage ||
+          message.templateMessage ||
+          message.listMessage
+        );
+        if (requiresPatch) {
+          message = {
+            viewOnceMessage: {
+              message: {
+                messageContextInfo: {
+                  deviceListMetadataVersion: 2,
+                  deviceListMetadata: {},
+                },
+                ...message,
+              },
+            },
+          };
+        }
+        return message;
+      },
     });
 
     this.store?.bind(this.sock.ev);
@@ -83,7 +103,8 @@ class Client {
         console.log(`\n┌──⌈ 🚀 ASTRAX ONLINE ⌋`);
         console.log(`┃ Account: ${this.sock.user.name || 'AstraX Node'}`);
         console.log(`┃ Owner ID: ${myNum}`);
-        console.log(`┃ Status: SYSTEM_STABLE`);
+        console.log(`┃ Engine: Baileys 6.7.22`);
+        console.log(`┃ Status: SYSTEM_STABLE_24/7`);
         console.log(`└───────────────────\n`);
 
         if (this.bot.io) this.bot.io.emit('auth.status', { status: 'connected' });
