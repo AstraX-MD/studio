@@ -1,14 +1,13 @@
 /**
- * @fileOverview Terminate the bot process.
+ * @fileOverview Overwritten by owner category for security.
  */
 export default {
-  name: "shutdown",
+  name: "shutdown_deprecated",
   category: "sudo",
-  description: "Kill the bot process safely.",
-  usage: "!shutdown",
-  permissions: 10, // ROOT ONLY
+  description: "Command moved to Owner category.",
+  permissions: 10,
   execute: async (ctx) => {
-    await ctx.reply("┌──⌈ SYSTEM ⌋\n┃ Terminating AstraX Engine...\n┃ Status: Offline\n└────────────────");
-    setTimeout(() => process.exit(0), 2000);
+    const prefix = await ctx.bot.managers.settings.get('core', 'prefix') || '!';
+    ctx.reply(`🚫 This command has been upgraded. Use ${prefix}shutdown under Owner category.`);
   }
 };
