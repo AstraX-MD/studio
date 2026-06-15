@@ -38,7 +38,10 @@ class Bot {
   }
 
   async init() {
-    console.log(`\n==> ASTRAX: Booting Core Intelligence...`);
+    console.log(`┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋`);
+    console.log(`┃ Version: 2.4.3-STABLE`);
+    console.log(`┃ Status: INITIALIZING...`);
+    console.log(`└─────────────────────────`);
     
     await this.db.init();
     await this._checkExpiration();
@@ -50,7 +53,6 @@ class Bot {
     await this.client.connect();
     
     this.isReady = true;
-    console.log('==> ASTRAX: Core Subsystems Synchronized.\n');
   }
 
   getCommandManifest() {
@@ -64,7 +66,8 @@ class Bot {
         name: cmd.name,
         description: cmd.description,
         usage: cmd.usage,
-        category: cmd.category
+        category: cmd.category,
+        aliases: cmd.aliases || []
       });
     }
     return manifest;
@@ -84,14 +87,12 @@ class Bot {
     const now = Date.now();
 
     if (now > expiryTime) {
-      console.log('\n====================================');
-      console.log('  DEPLOYMENT EXPIRED: ACCESS BLOCKED');
-      console.log('====================================\n');
+      console.log('\n==> CRITICAL: DEPLOYMENT EXPIRED');
       process.exit(1);
     }
 
     const remainingDays = Math.ceil((expiryTime - now) / (1000 * 60 * 60 * 24));
-    console.log(`==> SUBSCRIPTION: Active (${remainingDays} days remaining)`);
+    console.log(`==> SUBSCRIPTION: Active (${remainingDays} days left)`);
   }
 }
 

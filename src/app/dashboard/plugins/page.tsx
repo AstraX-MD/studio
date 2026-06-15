@@ -1,4 +1,3 @@
-
 "use client"
 
 import { useState } from "react"
@@ -11,13 +10,13 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs"
 import { cn } from "@/lib/utils"
 
 const plugins = [
-  { id: '1', name: 'Economy Pro', author: 'AstraCore', status: 'Installed', version: '2.4.0', type: 'Core', desc: 'Complete banking, gambling and XP system with cloud database support.' },
-  { id: '2', name: 'AI Image Forge', author: 'AstraLabs', status: 'Active', version: '1.2.1', type: 'Extension', desc: 'Integrated DALL-E 3 and Stable Diffusion generator for user commands.' },
-  { id: '3', name: 'YouTube Hydra', author: 'HydraDL', status: 'Update', version: '4.0.0', type: 'Downloader', desc: 'High-speed audio and video retrieval with custom quality selection.' },
-  { id: '4', name: 'Warden Guard', author: 'AstraCore', status: 'Active', version: '5.2.0', type: 'Security', desc: 'Advanced moderation suite including anti-link and automated raid protection.' },
-  { id: '5', name: 'Meme Weaver', author: 'GeniX', status: 'Not Installed', version: '0.8.0', type: 'Media', desc: 'On-the-fly meme generation and image editing suite for groups.' },
-  { id: '6', name: 'Auto-Responder', author: 'AstraCore', status: 'Active', version: '1.0.5', type: 'Automation', desc: 'Custom triggers and automated replies for group management.' },
-  { id: '7', name: 'Cloud Sync', author: 'AstraLabs', status: 'Installed', version: '2.0.1', type: 'Core', desc: 'Synchronize session data across multiple hosting nodes instantly.' }
+  { id: '1', name: 'Economy Pro', author: 'AstraCore', status: 'Installed', version: '2.4.0', type: 'Core', desc: 'Complete banking, gambling and XP system with cloud database support.', aliases: ['eco', 'money'] },
+  { id: '2', name: 'AI Image Forge', author: 'AstraLabs', status: 'Active', version: '1.2.1', type: 'Extension', desc: 'Integrated DALL-E 3 and Stable Diffusion generator for user commands.', aliases: ['imagine', 'dalle'] },
+  { id: '3', name: 'YouTube Hydra', author: 'HydraDL', status: 'Update', version: '4.0.0', type: 'Downloader', desc: 'High-speed audio and video retrieval with custom quality selection.', aliases: ['play', 'ytv'] },
+  { id: '4', name: 'Warden Guard', author: 'AstraCore', status: 'Active', version: '5.2.0', type: 'Security', desc: 'Advanced moderation suite including anti-link and automated raid protection.', aliases: ['warden', 'antilink'] },
+  { id: '5', name: 'Meme Weaver', author: 'GeniX', status: 'Not Installed', version: '0.8.0', type: 'Media', desc: 'On-the-fly meme generation and image editing suite for groups.', aliases: ['meme', 'edit'] },
+  { id: '6', name: 'Auto-Responder', author: 'AstraCore', status: 'Active', version: '1.0.5', type: 'Automation', desc: 'Custom triggers and automated replies for group management.', aliases: ['autoreply', 'bot'] },
+  { id: '7', name: 'Cloud Sync', author: 'AstraLabs', status: 'Installed', version: '2.0.1', type: 'Core', desc: 'Synchronize session data across multiple hosting nodes instantly.', aliases: ['sync', 'cloud'] }
 ]
 
 export default function PluginsPage() {
@@ -25,8 +24,12 @@ export default function PluginsPage() {
   const [activeTab, setActiveTab] = useState('all')
 
   const filteredPlugins = plugins.filter(plugin => {
-    const matchesSearch = plugin.name.toLowerCase().includes(searchQuery.toLowerCase()) || 
-                         plugin.desc.toLowerCase().includes(searchQuery.toLowerCase())
+    const query = searchQuery.toLowerCase();
+    const matchesSearch = 
+      plugin.name.toLowerCase().includes(query) || 
+      plugin.desc.toLowerCase().includes(query) ||
+      plugin.aliases?.some(a => a.toLowerCase().includes(query));
+      
     const matchesTab = activeTab === 'all' || plugin.type.toLowerCase() === activeTab.toLowerCase()
     return matchesSearch && matchesTab
   })
@@ -45,14 +48,17 @@ export default function PluginsPage() {
       </div>
 
       <div className="flex flex-col md:flex-row items-center gap-4 bg-card/30 p-4 rounded-2xl border border-white/5">
-        <div className="relative flex-1 w-full">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
-          <Input 
-            placeholder="Search commands and modules..." 
-            className="pl-10 h-11 bg-white/5 border-white/10 focus-visible:ring-primary"
-            value={searchQuery}
-            onChange={(e) => setSearchTerm(e.target.value)}
-          />
+        <div className="relative flex-1 w-full flex gap-2">
+          <div className="relative flex-1">
+            <Search className="absolute left-3 top-1/2 -translate-y-1/2 w-4 h-4 text-muted-foreground" />
+            <Input 
+              placeholder="Search by name, desc, or aliases (e.g. 'eco')..." 
+              className="pl-10 h-11 bg-white/5 border-white/10 focus-visible:ring-primary"
+              value={searchQuery}
+              onChange={(e) => setSearchTerm(e.target.value)}
+            />
+          </div>
+          <Button variant="secondary" className="h-11 px-6">Search</Button>
         </div>
         <Tabs value={activeTab} onValueChange={setActiveTab} className="w-full md:w-auto">
           <TabsList className="bg-white/5 h-11 p-1">

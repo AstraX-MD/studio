@@ -1,6 +1,6 @@
 /**
  * @fileOverview Orchestrates database operations with MongoDB priority and JSON/RAM fallback.
- * REMOVED: Firebase (Not required for AstraX Enterprise portability).
+ * Fixed: Removed bot.logger dependency to prevent boot failures.
  */
 export default class DatabaseManager {
   constructor(bot) {
@@ -13,26 +13,20 @@ export default class DatabaseManager {
    * Initializes the database. Tries Mongo -> JSON -> RAM.
    */
   async init() {
-    this.bot.logger.info(`Initializing Database Layer: [${this.activeProviderName.toUpperCase()}]`);
+    console.log(`\n==> DATABASE: Initializing [${this.activeProviderName.toUpperCase()}] Layer...`);
     
     try {
       if (this.activeProviderName === 'mongodb' && !process.env.MONGODB_URL) {
         throw new Error('MONGODB_URL missing in environment.');
       }
       
-      // Prevent loading removed Firebase provider
-      if (this.activeProviderName === 'firebase') {
-        this.activeProviderName = 'mongodb';
-      }
-
       await this._loadProvider(this.activeProviderName);
     } catch (error) {
-      this.bot.logger.warn(`Primary Provider [${this.activeProviderName}] failed: ${error.message}`);
-      this.bot.logger.info('Falling back to JSON mode...');
+      console.log(`==> DATABASE: Primary [${this.activeProviderName}] failed. Falling back...`);
       try {
         await this._loadProvider('json');
       } catch (e) {
-        this.bot.logger.info('Falling back to RAM mode...');
+        console.log('==> DATABASE: Falling back to RAM mode...');
         await this._loadProvider('ram');
       }
     }
@@ -45,7 +39,7 @@ export default class DatabaseManager {
     this.provider = new Provider(this.bot);
     await this.provider.init();
     this.activeProviderName = name;
-    this.bot.logger.info(`Database Active: [${name.toUpperCase()}]`);
+    console.log(`==> DATABASE: Status: ACTIVE [${name.toUpperCase()}]\n`);
   }
 
   // Unified API
