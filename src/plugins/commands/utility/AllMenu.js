@@ -1,5 +1,6 @@
 /**
  * @fileOverview Directory of all specialized menus.
+ * v1.2.5: High-speed categorized index.
  */
 export default {
   name: "allmenu",
@@ -36,7 +37,8 @@ export default {
 ├─⊷ ${prefix}toolmenu
 ├─⊷ ${prefix}utilitymenu
 ┃
-┃ Tip: Use ${prefix}help for all
+┃ Tip: Use ${prefix}help for 
+┃ categorized command view.
 └────────────────
   © ${botName.toUpperCase()}`;
 

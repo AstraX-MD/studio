@@ -25,8 +25,8 @@ class MessageHandler {
 
     const ctx = new Context(this.bot, msg);
     
-    // 1. High-Visibility Terminal Logger
-    const senderId = ctx.sender.split('@')[0];
+    // 1. High-Visibility Terminal Logger (Null-Safe)
+    const senderId = ctx.sender ? ctx.sender.split('@')[0] : 'SYSTEM';
     const logHeader = `[INBOUND] @${senderId}`;
     console.log(`┃ ${logHeader.padEnd(20)} | Content: ${ctx.text.substring(0, 50)}${ctx.text.length > 50 ? '...' : ''}`);
 

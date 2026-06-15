@@ -23,7 +23,7 @@ class CommandHandler {
       const isAllowed = await PermissionMiddleware.validate(this.bot, command, ctx);
       if (!isAllowed) return;
 
-      // 3. Cooldown Validation
+      // 3. Cooldown Validation (Silent for UX)
       const remaining = this.cooldownManager.getRemainingCooldown(
         ctx.sender, 
         command.name, 
@@ -31,12 +31,12 @@ class CommandHandler {
       );
 
       if (remaining) {
-        return await ctx.reply(`⏳ *Wait a moment*\n\nYou are on cooldown. Try again in ${remaining}s.`);
+        // Cooldown enforced silently to prevent spam.
+        return;
       }
 
       // 4. Execution Logic with Fail-Safe
       if (typeof command.execute === 'function') {
-        // WRAP IN TRY-CATCH TO PREVENT CRASHES
         await command.execute(ctx, args);
       } else {
         throw new Error('Command logic missing execute() function.');
@@ -44,7 +44,6 @@ class CommandHandler {
       
     } catch (error) {
       console.log(`==> ERROR: [${command.name}] execution failed: ${error.message}`);
-      // Skip alerting the user for self-inflicted errors to maintain professional look
       if (!ctx.fromMe) {
         await ctx.reply(`⚠️ *Framework Error*\n\nDetails: ${error.message}\n_Reporting to developers..._`);
       }
