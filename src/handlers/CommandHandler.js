@@ -1,6 +1,6 @@
 /**
  * @fileOverview Executes command logic and handles permissions/errors.
- * Updated with Disable/Enable check.
+ * v1.2.5: Fail-Safe Execution Core.
  */
 import PermissionMiddleware from '../middleware/PermissionMiddleware.js';
 import CooldownManager from '../managers/CooldownManager.js';
@@ -27,19 +27,26 @@ class CommandHandler {
       const remaining = this.cooldownManager.getRemainingCooldown(
         ctx.sender, 
         command.name, 
-        (command.cooldown || 3) * 1000
+        (command.cooldown || 2) * 1000
       );
 
       if (remaining) {
         return await ctx.reply(`⏳ *Wait a moment*\n\nYou are on cooldown. Try again in ${remaining}s.`);
       }
 
-      // 4. Execution
-      await command.execute(ctx, args);
+      // 4. Execution Logic with Fail-Safe
+      if (typeof command.execute === 'function') {
+        await command.execute(ctx, args);
+      } else {
+        throw new Error('Command logic missing execute() function.');
+      }
       
     } catch (error) {
       console.log(`==> ERROR: [${command.name}] execution failed: ${error.message}`);
-      await ctx.reply(`⚠️ *Framework Error*\n\nDetails: ${error.message}\n_Reporting to developers..._`);
+      // Skip alerting the user for self-inflicted errors to maintain professional look
+      if (!ctx.fromMe) {
+        await ctx.reply(`⚠️ *Framework Error*\n\nDetails: ${error.message}\n_Reporting to developers..._`);
+      }
     }
   }
 }

@@ -97,8 +97,32 @@ class Client {
 
   async _notifyOwner(myNum) {
     const jid = `${myNum}@s.whatsapp.net`;
-    const msg = `┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋\n┃\n┃ Status: NODE_SYNCHRONIZED\n┃ Identity: @${myNum}\n┃ Mode: SELF_AWARE_ACTIVE\n┃\n┃ Framework v1.2.5 is now ready.\n┃ All commands are functional.\n└────────────────`;
-    await this.sock.sendMessage(jid, { text: msg, mentions: [jid] }).catch(() => {});
+    const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
+    const cmdCount = new Set(this.bot.commands.values()).size;
+    const thumbnail = this.bot.config.thumbnail;
+
+    const msg = `┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋
+┃
+┃ Status: NODE_SYNCHRONIZED
+┃ Account: @${myNum}
+┃ Prefix: [ ${prefix} ]
+┃ 
+├─⊷ Modules: ${cmdCount} Active
+├─⊷ Engine: v1.2.5 Stable
+├─⊷ Latency: OPTIMIZED
+┃
+┃ Use ${prefix}help to begin.
+└────────────────`;
+
+    if (thumbnail) {
+      await this.sock.sendMessage(jid, { 
+        image: { url: thumbnail },
+        caption: msg,
+        mentions: [jid]
+      }).catch(() => {});
+    } else {
+      await this.sock.sendMessage(jid, { text: msg, mentions: [jid] }).catch(() => {});
+    }
   }
 
   async getPairingCode(phoneNumber) {
