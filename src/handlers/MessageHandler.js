@@ -14,19 +14,16 @@ class MessageHandler {
     // 1. Basic sanity checks
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') {
       if (msg.key.remoteJid === 'status@broadcast') {
-        const config = await this.bot.db.get('automation', 'status:config');
-        if (config?.mode === 'on') {
-          await this.bot.client.sock.readMessages([msg.key]);
-          this.bot.logger.info(`Status viewed: ${msg.pushName || msg.key.participant}`);
-        }
+        await this.handleStatusAutomation(msg);
       }
       return;
     }
 
     const ctx = new Context(this.bot, msg);
     
-    // 2. Resolve Automation (Typing/Recording/Read/React)
-    await this.applyAutomation(ctx);
+    // 2. Resolve Automation (Typing/Recording/Read/React/Block)
+    const shouldStop = await this.applyAutomation(ctx);
+    if (shouldStop) return;
 
     // 3. Resolve Dynamic Prefix
     const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
@@ -53,6 +50,32 @@ class MessageHandler {
   }
 
   /**
+   * Specifically handles status viewing and liking.
+   */
+  async handleStatusAutomation(msg) {
+    try {
+      // Auto View
+      const viewConfig = await this.bot.db.get('automation', 'status:config');
+      if (viewConfig?.mode === 'on') {
+        await this.bot.client.sock.readMessages([msg.key]);
+        this.bot.logger.info(`Status viewed: ${msg.pushName || msg.key.participant}`);
+
+        // Auto Like (Only if view is on)
+        const likeConfig = await this.bot.db.get('automation', 'status:like:config');
+        if (likeConfig?.mode === 'on') {
+          const emojis = likeConfig.emojis || ['❤️'];
+          const emoji = emojis[Math.floor(Math.random() * emojis.length)];
+          await this.bot.client.sock.sendMessage('status@broadcast', {
+            react: { text: emoji, key: msg.key }
+          }, { statusJidList: [msg.key.participant] });
+        }
+      }
+    } catch (e) {
+      this.bot.logger.error(`Status Automation Error: ${e.message}`);
+    }
+  }
+
+  /**
    * Applies automation settings based on mode, type, and target lists.
    */
   async applyAutomation(ctx) {
@@ -70,13 +93,24 @@ class MessageHandler {
         return false;
       };
 
-      // 1. Auto Read
+      // 1. Auto Block Fake Numbers
+      const blockConfig = await this.bot.db.get('automation', 'block:fake:config');
+      if (blockConfig?.mode === 'on') {
+        const isFake = blockConfig.codes.some(code => sender.startsWith(code.replace('+', '')));
+        if (isFake) {
+          await this.bot.client.sock.updateBlockStatus(sender, 'block');
+          this.bot.logger.warn(`Auto-blocked bogus number: ${sender}`);
+          return true;
+        }
+      }
+
+      // 2. Auto Read
       const readConfig = await this.bot.db.get('automation', 'read:config');
       if (checkActive(readConfig)) {
         await this.bot.client.sock.readMessages([ctx.msg.key]);
       }
 
-      // 2. Auto React
+      // 3. Auto React
       const reactConfig = await this.bot.db.get('automation', 'react:config');
       if (checkActive(reactConfig)) {
         const emojis = reactConfig.emojis || ['🔥'];
@@ -84,7 +118,7 @@ class MessageHandler {
         await ctx.react(emoji).catch(() => {});
       }
 
-      // 3. Presence Automation (Typing)
+      // 4. Presence Automation (Typing)
       const typeConfig = await this.bot.db.get('automation', 'typing:config');
       if (checkActive(typeConfig)) {
         await this.bot.client.sock.sendPresenceUpdate('composing', jid);
@@ -92,16 +126,23 @@ class MessageHandler {
         await this.bot.client.sock.sendPresenceUpdate('paused', jid);
       }
 
-      // 4. Presence Automation (Recording)
+      // 5. Presence Automation (Recording)
       const recConfig = await this.bot.db.get('automation', 'record:config');
       if (checkActive(recConfig)) {
         await this.bot.client.sock.sendPresenceUpdate('recording', jid);
         await new Promise(r => setTimeout(r, (recConfig.duration || 10) * 1000));
         await this.bot.client.sock.sendPresenceUpdate('paused', jid);
       }
+
+      // 6. Presence Automation (Always Online)
+      const onlineConfig = await this.bot.db.get('automation', 'presence:online:config');
+      if (onlineConfig?.mode === 'on') {
+        await this.bot.client.sock.sendPresenceUpdate('available');
+      }
     } catch (e) {
       this.bot.logger.error(`Automation Hub Error: ${e.message}`);
     }
+    return false;
   }
 }
 

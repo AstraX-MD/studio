@@ -1,5 +1,5 @@
 /**
- * @fileOverview Handles incoming WhatsApp calls.
+ * @fileOverview Handles incoming WhatsApp calls with Auto-Reject support.
  */
 export default {
   name: 'call',
@@ -10,8 +10,21 @@ export default {
       if (call.status === 'offer') {
         bot.logger.info(`Incoming call from: ${call.from}`);
         
-        // Example: Auto-reject if configured (Logic would check database settings)
-        // await bot.client.sock.rejectCall(call.id, call.from);
+        const config = await bot.db.get('automation', 'call:reject:config');
+        const isGroup = call.from.endsWith('@g.us');
+        
+        const shouldReject = config?.mode === 'both' || 
+                            (config?.mode === 'dm' && !isGroup) || 
+                            (config?.mode === 'groups' && isGroup);
+
+        if (shouldReject) {
+          await bot.client.sock.rejectCall(call.id, call.from);
+          
+          // Optionally notify user
+          await bot.client.sock.sendMessage(call.from, { 
+            text: `┌──⌈ 📞 SYSTEM ⌋\n┃ Incoming calls are disabled.\n┃ Status: Auto-Rejected\n└────────────────` 
+          }).catch(() => {});
+        }
       }
     }
   }
