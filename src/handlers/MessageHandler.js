@@ -1,6 +1,6 @@
 /**
- * @fileOverview Inbound message router with Dynamic Prefix Modes, Autonomous AI Agent, and RPG.
- * Updated with safe dynamic imports to prevent deployment crashes.
+ * @fileOverview Inbound message router.
+ * v2.4.2: Enabled Self-Reply capability and Hybrid Loop Protection.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -14,18 +14,11 @@ class MessageHandler {
     this._initAgent();
   }
 
-  /**
-   * Safely initialize the AI Agent subsystem.
-   * Skips if the module is missing or uncompiled.
-   */
   async _initAgent() {
     try {
       const { aiAgentProcess } = await import('../ai/flows/ai-agent-flow.js');
       this.agent = aiAgentProcess;
-      this.bot.logger.info('AI Agent Subsystem: CONNECTED');
-    } catch (e) {
-      this.bot.logger.warn('AI Agent Subsystem: SKIPPED (Module not found or uncompiled)');
-    }
+    } catch (e) {}
   }
 
   async handle(msg) {
@@ -36,11 +29,17 @@ class MessageHandler {
       return;
     }
 
+    // SELF-REPLY ALLOWED: Bot can trigger its own commands
+    // We only skip if the message is a "Thinking" or "Status Update" from the bot itself
+    if (msg.key.fromMe && (msg.message?.conversation?.includes('┌──⌈') || msg.message?.extendedTextMessage?.text?.includes('┌──⌈'))) {
+       return; 
+    }
+
     const ctx = new Context(this.bot, msg);
     const userRole = await this.bot.managers.roles.getRole(ctx.sender, ctx.isGroup ? ctx.jid : null);
     const isOwner = userRole >= 9;
 
-    // 0. GLOBAL MODE CHECK
+    // GLOBAL MODE CHECK
     const modeConfig = await this.bot.db.get('core', 'mode:config') || { current: 'public', excluded: [] };
     if (modeConfig.excluded.includes(ctx.sender) || modeConfig.excluded.includes(ctx.jid)) {
       if (!isOwner) return;
@@ -50,27 +49,24 @@ class MessageHandler {
       if (modeConfig.current === 'silent') return;
     }
 
-    // 1. RPG XP GAIN
+    // RPG XP GAIN
     if (ctx.isGroup) {
       await this.applyRpg(ctx);
     }
 
-    // 2. Command Detection with Dynamic Prefix Modes
+    // Command Detection
     const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
-    const prefixMode = await this.bot.managers.settings.get('core', 'prefixMode', 'global') || 'hybrid'; // prefix, noprefix, hybrid
+    const prefixMode = await this.bot.managers.settings.get('core', 'prefixMode', 'global') || 'hybrid';
     
     let isCommand = false;
     let commandName = '';
     let args = [];
 
-    // Mode: Standard Prefix
     if (ctx.text.startsWith(prefix)) {
       isCommand = true;
       args = ctx.text.slice(prefix.length).trim().split(/ +/);
       commandName = args.shift().toLowerCase();
-    } 
-    // Mode: No-Prefix or Hybrid
-    else if (prefixMode === 'noprefix' || prefixMode === 'hybrid') {
+    } else if (prefixMode === 'noprefix' || prefixMode === 'hybrid') {
       const parts = ctx.text.trim().split(/ +/);
       const possibleCmd = parts.shift().toLowerCase();
       if (this.bot.commands.has(possibleCmd)) {
@@ -89,7 +85,7 @@ class MessageHandler {
       }
     }
 
-    // 3. Autonomous AI Agent Logic (Runs for non-command messages if enabled)
+    // AI Agent logic
     if (this.agent) {
       await this.applyAgent(ctx);
     }
@@ -99,6 +95,7 @@ class MessageHandler {
     try {
       const config = await this.bot.db.get('automation', 'chatbot:config');
       if (!config || config.status !== 'on') return;
+      if (ctx.fromMe) return; // Prevent AI from talking to itself to save tokens
 
       const { mode, whitelist } = config;
       let shouldReply = false;
@@ -114,8 +111,6 @@ class MessageHandler {
         const history = this.bot.managers.memory.get(ctx.jid).map(h => ({ role: h.role, content: h.content }));
         const commands = this.bot.getCommandManifest();
 
-        await this.bot.client.sock.sendPresenceUpdate('composing', ctx.jid);
-        
         const agentResult = await this.agent({
           message: ctx.text,
           history: history,
@@ -142,9 +137,7 @@ class MessageHandler {
           }
         }
       }
-    } catch (e) {
-      this.bot.logger.error(`Agent Interaction Error: ${e.message}`);
-    }
+    } catch (e) {}
   }
 
   async applyRpg(ctx) {
@@ -158,18 +151,13 @@ class MessageHandler {
     const xpGain = Math.floor(Math.random() * 10) + 15;
     stats.xp += xpGain;
 
-    // Check Level Up: Lvl = floor(sqrt(xp/100))
     const newLevel = Math.floor(Math.sqrt(stats.xp / 100));
     if (newLevel > (stats.level || 0)) {
       stats.level = newLevel;
-      const botName = await this.bot.managers.settings.get('core', 'name') || this.bot.config.name;
-      
-      // Reward Level Up (Economy Integration)
       const eco = await this.bot.db.get('economy', sender) || { wallet: 0, bank: 0 };
       eco.wallet += 1000;
       await this.bot.db.set('economy', sender, eco);
-
-      ctx.reply(`┌──⌈ 🆙 LEVEL UP ⌋\n┃ \n┃ User: @${sender}\n┃ New Level: ${newLevel}\n┃ Reward: $1,000 Credits\n┃ \n└─ 🌌 ${botName.toUpperCase()}`, { mentions: [ctx.sender] });
+      ctx.reply(`┌──⌈ 🆙 LEVEL UP ⌋\n┃ \n┃ User: @${sender}\n┃ New Level: ${newLevel}\n┃ Reward: $1,000 Credits\n┃ \n└─ 🌌 ASTRAX`, { mentions: [ctx.sender] });
     }
 
     await this.bot.db.set('rpg_stats', sender, stats);
@@ -179,9 +167,7 @@ class MessageHandler {
   async handleStatusAutomation(msg) { 
     const config = await this.bot.db.get('automation', 'status:config');
     if (config?.mode === 'on') {
-      this.bot.logger.info(`Auto-Viewed status from ${msg.key.participant}`);
       await this.bot.client.sock.readMessages([msg.key]);
-      
       const likeConfig = await this.bot.db.get('automation', 'status:like:config');
       if (likeConfig?.mode === 'on') {
         const emoji = likeConfig.emojis[Math.floor(Math.random() * likeConfig.emojis.length)];

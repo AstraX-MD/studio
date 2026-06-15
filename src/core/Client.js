@@ -1,6 +1,6 @@
 /**
  * @fileOverview Wrapper for the Baileys socket connection.
- * Enhanced with Session ID Injection for Cloud Portability.
+ * Enhanced with Session ID Injection and Auto-Owner Resolution.
  */
 import makeWASocket, { 
   useMultiFileAuthState, 
@@ -24,14 +24,14 @@ class Client {
     const sessionDir = path.resolve('./sessions', this.sessionId);
     if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
 
-    // CLOUD SESSION INJECTION: If SESSION_ID env exists, use it to restore state
+    // CLOUD SESSION INJECTION
     const cloudSession = process.env.SESSION_ID;
     if (cloudSession && cloudSession.startsWith('ASTRAX~')) {
       try {
         const base64Data = cloudSession.split('ASTRAX~')[1];
         const credsData = Buffer.from(base64Data, 'base64').toString('utf-8');
         fs.writeFileSync(path.join(sessionDir, 'creds.json'), credsData);
-        console.log(`==> AUTH: Session ID restored from cloud environment.`);
+        console.log(`==> AUTH: Session ID injection successful.`);
       } catch (e) {
         console.error(`==> AUTH: Failed to inject cloud session:`, e.message);
       }
@@ -69,12 +69,23 @@ class Client {
           this.connect();
         }
       } else if (connection === 'open') {
+        const myNum = this.sock.user.id.split(':')[0];
         this.bot.isReady = true;
-        console.log(`==> SOCKET: Authenticated as ${this.sock.user.name || 'AstraX Node'}`);
+        
+        // Dynamic Owner Resolution
+        if (!this.bot.config.owners.includes(myNum)) {
+          this.bot.config.owners.push(myNum);
+        }
+
+        console.log(`\n┌──⌈ 🚀 ASTRAX ONLINE ⌋`);
+        console.log(`┃ Account: ${this.sock.user.name || 'AstraX Node'}`);
+        console.log(`┃ Owner ID: ${myNum}`);
+        console.log(`┃ Status: SYSTEM_STABLE`);
+        console.log(`└───────────────────\n`);
+
         if (this.bot.io) this.bot.io.emit('auth.status', { status: 'connected' });
         
-        // Notify Owner of Online Status
-        await this._notifyOwner();
+        await this._notifyOwner(myNum);
       }
     });
 
@@ -85,13 +96,10 @@ class Client {
     return this.sock;
   }
 
-  async _notifyOwner() {
-    const owner = this.bot.config.owners[0];
-    if (owner) {
-      const jid = owner.includes('@') ? owner : `${owner}@s.whatsapp.net`;
-      const msg = `┌──⌈ 🌌 ASTRAX ONLINE ⌋\n┃\n┃ Status: SYSTEM_STABLE\n┃ Host: CLOUD-RENDER\n┃ Time: ${new Date().toLocaleTimeString()}\n┃\n┃ Framework is now ready.\n└────────────────`;
-      await this.sock.sendMessage(jid, { text: msg }).catch(() => {});
-    }
+  async _notifyOwner(myNum) {
+    const jid = `${myNum}@s.whatsapp.net`;
+    const msg = `┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋\n┃\n┃ Status: NODE_SYNCHRONIZED\n┃ Identity: @${myNum}\n┃ Mode: SELF_AWARE_ACTIVE\n┃\n┃ Framework v2.4.2 is now ready.\n┃ All commands are functional.\n└────────────────`;
+    await this.sock.sendMessage(jid, { text: msg, mentions: [jid] }).catch(() => {});
   }
 
   async getPairingCode(phoneNumber) {
