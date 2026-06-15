@@ -1,13 +1,16 @@
 /**
  * @fileOverview Inbound message router with integrated Granular Automation & Security Hub.
+ * Updated to support Anti-Spam, Anti-Toxic, Anti-Word, and Anti-TagAll logic.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
+import { aiContentModeration } from '../ai/flows/ai-content-moderation-flow.js';
 
 class MessageHandler {
   constructor(bot) {
     this.bot = bot;
     this.commandHandler = new CommandHandler(bot);
+    this.spamTracker = new Map(); // { sender: { count: 0, last: timestamp } }
   }
 
   async handle(msg) {
@@ -20,7 +23,7 @@ class MessageHandler {
 
     const ctx = new Context(this.bot, msg);
     
-    // 1. Security Check (Anti-Link, Anti-Bot, Anti-Sticker, Anti-Emoji)
+    // 1. Security Check (Anti-Link, Anti-Bot, Anti-Sticker, Anti-Emoji, Anti-Spam, etc.)
     const isViolator = await this.applySecurity(ctx);
     if (isViolator) return;
 
@@ -45,16 +48,36 @@ class MessageHandler {
    * Specifically handles group security violations.
    */
   async applySecurity(ctx) {
-    if (!ctx.isGroup) return false;
-    
     const sender = ctx.sender;
     const jid = ctx.jid;
+    const userRole = await this.bot.managers.roles.getRole(sender, jid);
 
     // Skip checks for Admins/Owners
-    const userRole = await this.bot.managers.roles.getRole(sender, jid);
     if (userRole >= 5) return false;
 
-    // 1. Anti-Link
+    // 1. Anti-Spam (Flood Protection)
+    const spamConfig = await this.bot.db.get('security', 'antispam:config');
+    if (spamConfig?.mode === 'on' || (spamConfig?.mode === 'groups' && ctx.isGroup) || (spamConfig?.mode === 'dm' && !ctx.isGroup)) {
+      const now = Date.now();
+      const track = this.spamTracker.get(sender) || { count: 0, last: 0 };
+      
+      if (now - track.last < 10000) { // 10s interval
+        track.count++;
+        if (track.count >= (spamConfig.threshold || 5)) {
+          await this.executePunishment(ctx, spamConfig.action || 'mute', 'SPAM-FLOOD');
+          this.spamTracker.set(sender, { count: 0, last: now });
+          return true;
+        }
+      } else {
+        track.count = 1;
+        track.last = now;
+      }
+      this.spamTracker.set(sender, track);
+    }
+
+    if (!ctx.isGroup) return false;
+
+    // 2. Anti-Link
     const linkConfig = await this.bot.db.get('security', `antilink:${jid}`);
     if (linkConfig?.mode === 'on') {
       const groupLinkRegex = /(chat.whatsapp.com\/)([0-9A-Za-z]{20,24})/i;
@@ -64,28 +87,51 @@ class MessageHandler {
       }
     }
 
-    // 2. Anti-Sticker
+    // 3. Anti-Sticker
     const stickerConfig = await this.bot.db.get('security', `antisticker:${jid}`);
     if (stickerConfig?.mode === 'on' && ctx.msg.message?.stickerMessage) {
       await this.executePunishment(ctx, stickerConfig.action, 'STICKER-VIOLATION');
       return true;
     }
 
-    // 3. Anti-Bot
-    const botConfig = await this.bot.db.get('security', `antibot:${jid}`);
-    if (botConfig?.mode === 'on') {
-      if (ctx.msg.key.id.startsWith('BAE5') || ctx.msg.key.id.length > 21) {
-        await this.executePunishment(ctx, 'kick', 'EXTERNAL-BOT-DETECTED');
-        return true;
-      }
-    }
-
-    // 4. Anti-Emoji (Flood)
+    // 4. Anti-Emoji
     const emojiConfig = await this.bot.db.get('security', `antiemoji:${jid}`);
     if (emojiConfig?.mode === 'on') {
       const emojis = ctx.text.match(/[\p{Emoji}]/gu) || [];
       if (emojis.length > 5) {
         await this.executePunishment(ctx, emojiConfig.action, 'EMOJI-FLOOD');
+        return true;
+      }
+    }
+
+    // 5. Anti-TagAll
+    const tagAllConfig = await this.bot.db.get('security', `antitagall:${jid}`);
+    if (tagAllConfig?.mode === 'on') {
+      const mentions = ctx.msg.message?.extendedTextMessage?.contextInfo?.mentionedJid || [];
+      if (mentions.length > 10 || ctx.text.includes('@everyone') || ctx.text.includes('@here')) {
+        await this.executePunishment(ctx, tagAllConfig.action || 'delete', 'MASS-MENTION');
+        return true;
+      }
+    }
+
+    // 6. Anti-Toxic (AI Powered)
+    const toxicConfig = await this.bot.db.get('security', `antitoxic:${jid}`);
+    if (toxicConfig?.mode === 'on' && ctx.text.length > 5) {
+      try {
+        const result = await aiContentModeration({ message: ctx.text });
+        if (!result.isAppropriate) {
+          await this.executePunishment(ctx, toxicConfig.action || 'warn', 'TOXIC-CONTENT');
+          return true;
+        }
+      } catch (e) {}
+    }
+
+    // 7. Anti-Word
+    const wordConfig = await this.bot.db.get('security', `antiword:${jid}`);
+    if (wordConfig?.mode === 'on' && wordConfig.words?.length > 0) {
+      const hasBanned = wordConfig.words.some(w => ctx.text.toLowerCase().includes(w.toLowerCase()));
+      if (hasBanned) {
+        await this.executePunishment(ctx, wordConfig.action || 'delete', 'BANNED-WORD');
         return true;
       }
     }
@@ -98,7 +144,7 @@ class MessageHandler {
     const jid = ctx.jid;
 
     if (action === 'delete' || action === 'kick' || action === 'warn') {
-      await this.bot.client.sock.sendMessage(jid, { delete: ctx.msg.key });
+      await this.bot.client.sock.sendMessage(jid, { delete: ctx.msg.key }).catch(() => {});
     }
 
     if (action === 'warn') {
@@ -164,6 +210,18 @@ class MessageHandler {
         await this.bot.client.sock.sendPresenceUpdate('recording', jid);
         await new Promise(r => setTimeout(r, (recConfig.duration || 10) * 1000));
         await this.bot.client.sock.sendPresenceUpdate('paused', jid);
+      }
+
+      // Anti-ViewOnce Recovery
+      const viewOnceConfig = await this.bot.db.get('security', 'antiviewonce:config');
+      if (checkActive(viewOnceConfig) && (ctx.msg.message?.imageMessage?.viewOnce || ctx.msg.message?.videoMessage?.viewOnce)) {
+          // Log or resend message without viewOnce flag
+          const cloned = JSON.parse(JSON.stringify(ctx.msg.message));
+          if (cloned.imageMessage) cloned.imageMessage.viewOnce = false;
+          if (cloned.videoMessage) cloned.videoMessage.viewOnce = false;
+          
+          await ctx.reply(`┌──⌈ 👁️ WARDEN ⌋\n┃ Task: View-Once Recover\n┃ User: @${sender.split('@')[0]}\n└────────────────`, { mentions: [sender] });
+          await ctx.sock.sendMessage(jid, cloned, { quoted: ctx.msg });
       }
     } catch (e) {
       this.bot.logger.error(`Automation Hub Error: ${e.message}`);
