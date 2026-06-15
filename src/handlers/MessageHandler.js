@@ -1,6 +1,5 @@
 /**
- * @fileOverview Inbound message router with integrated Granular Automation & Security Hub.
- * Updated with Snitch Logic (Sticker-to-ViewOnce) and Channel Forwarding.
+ * @fileOverview Inbound message router with integrated Granular Automation, Security Hub & RPG System.
  */
 import { downloadMediaMessage } from '@whiskeysockets/baileys';
 import Context from '../core/Context.js';
@@ -13,6 +12,7 @@ class MessageHandler {
     this.bot = bot;
     this.commandHandler = new CommandHandler(bot);
     this.spamTracker = new Map();
+    this.xpCooldowns = new Map();
   }
 
   async handle(msg) {
@@ -40,21 +40,26 @@ class MessageHandler {
       if (modeConfig.current === 'groups' && !ctx.isGroup) return;
     }
 
-    // 1. SNITCH LOGIC (Sticker reply to ViewOnce)
+    // 1. RPG XP GAIN (Only in Groups if enabled)
+    if (ctx.isGroup) {
+      await this.applyRpg(ctx);
+    }
+
+    // 2. SNITCH LOGIC (Sticker reply to ViewOnce)
     const quoted = ctx.msg.message?.extendedTextMessage?.contextInfo?.quotedMessage;
     if (ctx.msg.message?.stickerMessage && (quoted?.imageMessage?.viewOnce || quoted?.videoMessage?.viewOnce)) {
       await this.handleSnitch(ctx, isSudo ? ctx.sender : this.bot.config.owners[0] + '@s.whatsapp.net');
     }
 
-    // 2. Security Check (Warden Suite)
+    // 3. Security Check (Warden Suite)
     const isViolator = await this.applySecurity(ctx);
     if (isViolator) return;
 
-    // 3. Automation Check
+    // 4. Automation Check
     const shouldStop = await this.applyAutomation(ctx);
     if (shouldStop) return;
 
-    // 4. Command Detection
+    // 5. Command Detection
     const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
     if (!ctx.text.startsWith(prefix)) return;
 
@@ -79,8 +84,51 @@ class MessageHandler {
   }
 
   /**
-   * Handle the Snitch Logic: Sends view-once media to owner/sudo when a user replies with a sticker.
+   * Grant XP to users for group engagement.
    */
+  async applyRpg(ctx) {
+    const isEnabled = await this.bot.db.get('settings', `rpg_enabled:${ctx.jid}`);
+    if (!isEnabled) return;
+
+    const sender = ctx.sender.split('@')[0];
+    const now = Date.now();
+    const cooldown = 60000; // 1 minute XP cooldown
+
+    if (this.xpCooldowns.has(ctx.sender)) {
+      if (now - this.xpCooldowns.get(ctx.sender) < cooldown) return;
+    }
+
+    const stats = await this.bot.db.get('rpg_stats', sender) || { xp: 0, level: 0 };
+    const xpGain = Math.floor(Math.random() * 10) + 15; // 15-25 XP per msg
+    
+    const oldLevel = Math.floor(Math.sqrt(stats.xp / 100));
+    stats.xp += xpGain;
+    const newLevel = Math.floor(Math.sqrt(stats.xp / 100));
+    
+    await this.bot.db.set('rpg_stats', sender, stats);
+    this.xpCooldowns.set(ctx.sender, now);
+
+    if (newLevel > oldLevel) {
+      const botName = await this.bot.managers.settings.get('core', 'name') || this.bot.config.name;
+      const congrats = `┌──⌈ 🎊 LEVEL UP! ⌋
+┃
+┃ User: @${sender}
+┃ Level: ${oldLevel} ➔ ${newLevel}
+┃ Reward: +$1,000 Credits
+┃
+├─⊷ Status: PROMOTED
+└────────────────
+  © ${botName.toUpperCase()}`;
+      
+      await ctx.reply(congrats, { mentions: [ctx.sender] });
+      
+      // Auto-reward economy
+      const eco = await this.bot.db.get('economy', sender) || { wallet: 0, bank: 0 };
+      eco.wallet += 1000;
+      await this.bot.db.set('economy', sender, eco);
+    }
+  }
+
   async handleSnitch(ctx, recipient) {
     try {
       const buffer = await downloadMediaMessage(ctx.msg, 'buffer', {});
