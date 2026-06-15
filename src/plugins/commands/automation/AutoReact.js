@@ -1,5 +1,5 @@
 /**
- * @fileOverview Configure automatic emoji reactions with rotations.
+ * @fileOverview Configure automatic emoji reactions with a unique AstraX frame design.
  */
 export default {
   name: "autoreact",
@@ -28,26 +28,21 @@ export default {
       await ctx.bot.db.set('automation', 'react:config', config);
     }
 
-    const output = `╭─⌈ ❤️ *AUTO-REACT* ⌋
-│
-│ Mode: ${config.mode === 'off' ? '❌ OFF' : '✅ ' + config.mode.toUpperCase()}
-│ Rotation: ${config.emojis.join(' ')}
-│ Active: ${config.targets.length} custom
-│
-├─⊷ *${prefix}autoreact <emojis>*
-│  └⊷ Set emoji list (comma separated)
-│  └⊷ e.g. ${prefix}autoreact 🔥,❤️,✅
-├─⊷ *${prefix}autoreact dm*
-│  └⊷ All DMs
-├─⊷ *${prefix}autoreact groups*
-│  └⊷ All groups
-├─⊷ *${prefix}autoreact both*
-│  └⊷ DMs + Groups
-├─⊷ *${prefix}autoreact off*
-│  └⊷ Disable
-├─⊷ *${prefix}autoreact <number>*
-│  └⊷ React only for specific user
-╰⊷ 🌌 *Powered by ${botName.toUpperCase()}*`;
+    const output = `┍━━━━━━━━━━━━━━━┑
+   ❤️ REACTION HUB    
+┕━━━━━━━━━━━━━━━┙
+┝  ◌ Mode: ${config.mode.toUpperCase()}
+┝  ◌ List: ${config.emojis.join(' ')}
+┝  ◌ Custom: ${config.targets.length} Users
+┝━━━━━━━━━━━━━━━
+┝  ▹ ${prefix}autoreact <emojis>
+┝  ▹ ${prefix}autoreact dm
+┝  ▹ ${prefix}autoreact groups
+┝  ▹ ${prefix}autoreact both
+┝  ▹ ${prefix}autoreact off
+┝  ▹ ${prefix}autoreact <number>
+┕━━━━━━━━━━━━━━━
+  © ${botName.toUpperCase()} SYSTEMS`;
 
     ctx.reply(output);
   }

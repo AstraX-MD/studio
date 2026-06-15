@@ -1,5 +1,5 @@
 /**
- * @fileOverview Toggle automatic status viewing and logging.
+ * @fileOverview Toggle automatic status viewing with a unique AstraX frame design.
  */
 export default {
   name: "autoviewstatus",
@@ -20,18 +20,19 @@ export default {
       await ctx.bot.db.set('automation', 'status:config', config);
     }
 
-    const output = `╭─⌈ 👁️ *AUTO-STATUS* ⌋
-│
-│ Mode: ${config.mode === 'on' ? '✅ ACTIVE' : '❌ INACTIVE'}
-│ Action: Auto View & Log
-│ Scope: All Contacts
-│
-├─⊷ *${prefix}autoviewstatus on*
-│  └⊷ View all incoming statuses
-├─⊷ *${prefix}autoviewstatus off*
-│  └⊷ Disable status viewing
-│
-╰⊷ 🌌 *Powered by ${botName.toUpperCase()}*`;
+    const output = `┍━━━━━━━━━━━━━━━┑
+   👁️ STATUS WARDEN   
+┕━━━━━━━━━━━━━━━┙
+┝  ◌ Mode: ${config.mode.toUpperCase()}
+┝  ◌ Action: AUTO-VIEW
+┝  ◌ Log: ENABLED
+┝━━━━━━━━━━━━━━━
+┝  ▹ ${prefix}autoviewstatus on
+┝  ▹ ${prefix}autoviewstatus off
+┝
+┝  (Views all contacts)
+┕━━━━━━━━━━━━━━━
+  © ${botName.toUpperCase()} SYSTEMS`;
 
     ctx.reply(output);
   }

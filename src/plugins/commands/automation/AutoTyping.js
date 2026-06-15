@@ -1,5 +1,5 @@
 /**
- * @fileOverview Configure simulated typing behavior with detailed control.
+ * @fileOverview Configure simulated typing behavior with a unique AstraX frame design.
  */
 export default {
   name: "autotyping",
@@ -30,25 +30,21 @@ export default {
       await ctx.bot.db.set('automation', 'typing:config', config);
     }
 
-    const output = `╭─⌈ ⌨️ *AUTO-TYPING* ⌋
-│
-│ Mode: ${config.mode === 'off' ? '❌ OFF' : '✅ ' + config.mode.toUpperCase()}
-│ Duration: ${config.duration}s
-│ Active: ${config.targets.length} custom
-│
-├─⊷ *${prefix}autotyping <number>*
-│  └⊷ Type only for that user
-├─⊷ *${prefix}autotyping dm*
-│  └⊷ All DMs
-├─⊷ *${prefix}autotyping groups*
-│  └⊷ All groups
-├─⊷ *${prefix}autotyping both*
-│  └⊷ DMs + Groups
-├─⊷ *${prefix}autotyping off*
-│  └⊷ Disable
-├─⊷ *${prefix}autotyping <1-120>*
-│  └⊷ Set duration
-╰⊷ 🌌 *Powered by ${botName.toUpperCase()}*`;
+    const output = `┍━━━━━━━━━━━━━━━┑
+   ⌨️ TYPING ENGINE   
+┕━━━━━━━━━━━━━━━┙
+┝  ◌ Mode: ${config.mode.toUpperCase()}
+┝  ◌ Time: ${config.duration}s
+┝  ◌ Custom: ${config.targets.length} Users
+┝━━━━━━━━━━━━━━━
+┝  ▹ ${prefix}autotyping dm
+┝  ▹ ${prefix}autotyping groups
+┝  ▹ ${prefix}autotyping both
+┝  ▹ ${prefix}autotyping off
+┝  ▹ ${prefix}autotyping <1-120>
+┝  ▹ ${prefix}autotyping <number>
+┕━━━━━━━━━━━━━━━
+  © ${botName.toUpperCase()} SYSTEMS`;
 
     ctx.reply(output);
   }

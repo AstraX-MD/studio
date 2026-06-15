@@ -1,5 +1,5 @@
 /**
- * @fileOverview Toggle automatic read receipts (Blue Ticks).
+ * @fileOverview Toggle automatic read receipts with a unique AstraX frame design.
  */
 export default {
   name: "autoread",
@@ -26,23 +26,20 @@ export default {
       await ctx.bot.db.set('automation', 'read:config', config);
     }
 
-    const output = `╭─⌈ ✅ *AUTO-READ* ⌋
-│
-│ Mode: ${config.mode === 'off' ? '❌ OFF' : '✅ ' + config.mode.toUpperCase()}
-│ Status: Blue Tick Active
-│ Active: ${config.targets.length} custom
-│
-├─⊷ *${prefix}autoread dm*
-│  └⊷ Mark all DMs as read
-├─⊷ *${prefix}autoread groups*
-│  └⊷ Mark all groups as read
-├─⊷ *${prefix}autoread both*
-│  └⊷ All chats
-├─⊷ *${prefix}autoread off*
-│  └⊷ Disable auto-read
-├─⊷ *${prefix}autoread <number>*
-│  └⊷ Read only for specific user
-╰⊷ 🌌 *Powered by ${botName.toUpperCase()}*`;
+    const output = `┍━━━━━━━━━━━━━━━┑
+   ✅ BLUE TICK HUB   
+┕━━━━━━━━━━━━━━━┙
+┝  ◌ Mode: ${config.mode.toUpperCase()}
+┝  ◌ Scope: ALL CHATS
+┝  ◌ Custom: ${config.targets.length} Users
+┝━━━━━━━━━━━━━━━
+┝  ▹ ${prefix}autoread dm
+┝  ▹ ${prefix}autoread groups
+┝  ▹ ${prefix}autoread both
+┝  ▹ ${prefix}autoread off
+┝  ▹ ${prefix}autoread <number>
+┕━━━━━━━━━━━━━━━
+  © ${botName.toUpperCase()} SYSTEMS`;
 
     ctx.reply(output);
   }
