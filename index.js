@@ -30,6 +30,11 @@ app.use(express.static(join(__dirname, 'public')));
 app.use(express.json());
 
 /**
+ * SHARED SOCKET INSTANCE
+ */
+bot.io = io;
+
+/**
  * LIVE HTML RENDERER
  * Allows the AI to generate and preview web apps instantly.
  */
@@ -67,10 +72,17 @@ app.get('/api/status', async (req, res) => {
   });
 });
 
-// 2. Get All Commands
-app.get('/api/commands', (req, res) => {
-  const manifest = bot.getCommandManifest();
-  res.json(manifest);
+// 2. Pair Request (Link Code)
+app.post('/api/pair', async (req, res) => {
+  const { phone } = req.body;
+  if (!phone) return res.status(400).json({ error: 'Phone number required' });
+  
+  try {
+    const code = await bot.client.getPairingCode(phone);
+    res.json({ success: true, code });
+  } catch (e) {
+    res.status(500).json({ error: e.message });
+  }
 });
 
 // 3. Update Settings
@@ -78,23 +90,6 @@ app.post('/api/settings', async (req, res) => {
   const { category, key, value } = req.body;
   await bot.managers.settings.set(category, key, value, 'global');
   res.json({ success: true, message: `Updated ${category}.${key}` });
-});
-
-// 4. Toggle Command
-app.post('/api/commands/toggle', async (req, res) => {
-  const { name, status } = req.body;
-  const disabledList = await bot.db.get('settings', 'disabledCommands') || [];
-  
-  let newList;
-  if (status === false) {
-    if (!disabledList.includes(name)) disabledList.push(name);
-    newList = disabledList;
-  } else {
-    newList = disabledList.filter(n => n !== name);
-  }
-  
-  await bot.db.set('settings', 'disabledCommands', newList);
-  res.json({ success: true, newList });
 });
 
 /**
@@ -106,7 +101,8 @@ setInterval(async () => {
     io.emit('telemetry', {
       ram: (memUsage.rss / 1024 / 1024).toFixed(1),
       cpu: os.loadavg()[0].toFixed(2),
-      uptime: Math.floor(process.uptime())
+      uptime: Math.floor(process.uptime()),
+      connected: bot.isReady
     });
   }
 }, 3000);
