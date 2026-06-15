@@ -1,6 +1,6 @@
 /**
  * @fileOverview Main entry point for AstraX Enterprise.
- * Integrates Bot Core with a Real-Time Glassmorphic Management Dashboard and Live HTML Renderer.
+ * Stabilized for Cloud Hosting with Clean Telemetry.
  */
 import 'dotenv/config';
 import express from 'express';
@@ -8,7 +8,6 @@ import { createServer } from 'http';
 import { Server } from 'socket.io';
 import { fileURLToPath } from 'url';
 import { dirname, join } from 'path';
-import fs from 'fs';
 import os from 'os';
 
 // Import Bot Core
@@ -36,7 +35,6 @@ bot.io = io;
 
 /**
  * LIVE HTML RENDERER
- * Allows the AI to generate and preview web apps instantly.
  */
 app.get('/render', (req, res) => {
   const code = req.query.html;
@@ -54,7 +52,6 @@ app.get('/render', (req, res) => {
  * DASHBOARD API ROUTES
  */
 
-// 1. Get System Status
 app.get('/api/status', async (req, res) => {
   const memUsage = process.memoryUsage();
   const totalMem = os.totalmem();
@@ -72,7 +69,6 @@ app.get('/api/status', async (req, res) => {
   });
 });
 
-// 2. Pair Request (Link Code)
 app.post('/api/pair', async (req, res) => {
   const { phone } = req.body;
   if (!phone) return res.status(400).json({ error: 'Phone number required' });
@@ -83,13 +79,6 @@ app.post('/api/pair', async (req, res) => {
   } catch (e) {
     res.status(500).json({ error: e.message });
   }
-});
-
-// 3. Update Settings
-app.post('/api/settings', async (req, res) => {
-  const { category, key, value } = req.body;
-  await bot.managers.settings.set(category, key, value, 'global');
-  res.json({ success: true, message: `Updated ${category}.${key}` });
 });
 
 /**
@@ -111,17 +100,15 @@ setInterval(async () => {
  * ENGINE BOOT
  */
 async function start() {
-  console.log(`\n==> ASTRAX: Initializing Web Console on port ${PORT}...`);
-  
   httpServer.listen(PORT, () => {
-    console.log(`==> DASHBOARD: Operational at http://localhost:${PORT}`);
-    console.log(`==> RENDERER: Available at http://localhost:${PORT}/render`);
+    console.log(`\n==> CONSOLE: Live on port ${PORT}`);
+    console.log(`==> PROJECT: AstraX Enterprise v2.4.0`);
   });
 
   try {
     await bot.init();
   } catch (error) {
-    console.error('==> CRITICAL: Bot Core failed to boot:', error);
+    console.error('==> CRITICAL: Boot failure:', error);
   }
 }
 

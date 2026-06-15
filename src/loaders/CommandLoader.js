@@ -1,18 +1,17 @@
 /**
- * @fileOverview Discovers and registers commands with hot-reloading support.
+ * @fileOverview Discovers and registers commands with clean audit logging.
  */
 import fs from 'fs';
 import path from 'path';
 
 class CommandLoader {
-  /**
-   * Scans and loads all commands.
-   */
   static async load(bot) {
     const pluginsDir = path.resolve('src/plugins/commands');
     if (!fs.existsSync(pluginsDir)) return;
 
     const categories = fs.readdirSync(pluginsDir);
+    let loaded = 0;
+    let failed = 0;
     
     for (const category of categories) {
       const categoryPath = path.join(pluginsDir, category);
@@ -21,21 +20,18 @@ class CommandLoader {
       const files = fs.readdirSync(categoryPath).filter(f => f.endsWith('.js'));
       
       for (const file of files) {
-        await this.reload(bot, category, file);
+        const success = await this.reload(bot, category, file);
+        if (success) loaded++;
+        else failed++;
       }
     }
     
-    bot.logger.info(`Loaded ${bot.commands.size} commands.`);
+    console.log(`==> ENGINE: ${loaded} modules active. ${failed} modules skipped.`);
   }
 
-  /**
-   * Reloads or loads a specific command file.
-   * Uses cache-busting to ensure fresh code is loaded.
-   */
   static async reload(bot, category, fileName) {
     try {
       const filePath = path.resolve('src/plugins/commands', category, fileName);
-      // Cache busting for ESM
       const { default: command } = await import(`file://${filePath}?update=${Date.now()}`);
       
       if (!command || !command.name) return false;
@@ -43,7 +39,6 @@ class CommandLoader {
       command.category = category;
       command.fileName = fileName;
       
-      // If updating, clean up old aliases
       const existing = bot.commands.get(command.name);
       if (existing && existing.aliases) {
         existing.aliases.forEach(alias => bot.commands.delete(alias));
@@ -55,14 +50,10 @@ class CommandLoader {
       }
       return true;
     } catch (e) {
-      bot.logger.error(`Failed to load command ${fileName}: ${e.message}`);
       return false;
     }
   }
 
-  /**
-   * Unloads a command from memory.
-   */
   static unload(bot, commandName) {
     const command = bot.commands.get(commandName);
     if (!command) return false;
