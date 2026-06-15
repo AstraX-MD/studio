@@ -20,13 +20,14 @@ export default {
 ├─⊷ ${prefix}aimenu
 ├─⊷ ${prefix}animemenu
 ├─⊷ ${prefix}automationmenu
-├─⊷  ${prefix}convertermenu
+├─⊷ ${prefix}convertermenu
 ├─⊷ ${prefix}economymenu
 ├─⊷ ${prefix}educationmenu
 ├─⊷ ${prefix}footballmenu
 ├─⊷ ${prefix}funmenu
 ├─⊷ ${prefix}logomenu
 ├─⊷ ${prefix}musicmenu
+├─⊷ ${prefix}nsfwmenu
 ├─⊷ ${prefix}photomenu
 ├─⊷ ${prefix}profilemenu
 ├─⊷ ${prefix}securitymenu
