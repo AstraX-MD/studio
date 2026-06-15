@@ -1,6 +1,6 @@
 /**
  * @fileOverview Main entry point for AstraX Enterprise.
- * Combines the Bot Engine with a built-in Session Generator Server.
+ * Differentiates between Bot Mode (SESSION_ID) and Generator Mode.
  */
 import 'dotenv/config';
 import express from 'express';
@@ -42,6 +42,36 @@ if (!fs.existsSync(BASE_SESSION_DIR)) {
   fs.mkdirSync(BASE_SESSION_DIR, { recursive: true });
 }
 
+/**
+ * SESSION_ID BOOT LOGIC
+ * If a SESSION_ID is provided in the environment, decode it and setup the session folder.
+ */
+if (process.env.SESSION_ID) {
+  const sessionName = process.env.SESSION_NAME || 'AstraX-Main';
+  const targetDir = join(BASE_SESSION_DIR, sessionName);
+  
+  if (!fs.existsSync(targetDir)) {
+    fs.mkdirSync(targetDir, { recursive: true });
+    try {
+      const decoded = Buffer.from(process.env.SESSION_ID.split('~')[1] || process.env.SESSION_ID, 'base64').toString();
+      fs.writeFileSync(join(targetDir, 'creds.json'), decoded);
+      console.log(`==> AstraX: Session creds restored to ${targetDir}`);
+    } catch (e) {
+      console.error('==> AstraX: Failed to decode SESSION_ID. Ensure it is a valid base64 string.');
+    }
+  }
+
+  // Boot the bot engine
+  console.log('==> AstraX: Bot Mode Active. Initializing...');
+  bot.init().catch(err => {
+    console.error('==> AstraX: Bot boot failed:', err);
+  });
+}
+
+/**
+ * SESSION GENERATOR SERVER
+ * Runs only if SESSION_ID is not present or if specifically configured to run alongside.
+ */
 const app = express();
 const server = createServer(app);
 const io = new Server(server, {
@@ -61,7 +91,7 @@ app.get('/status', (req, res) => {
 
   res.json({
     status: 'alive',
-    bot: 'AstraX-Enterprise-Node',
+    bot: BOT_NAME,
     ramUsage: `${ramPercent}%`,
     uptime: Math.floor(process.uptime())
   });
@@ -112,7 +142,7 @@ async function createNewSession(userId, socket) {
   sock.ev.on('creds.update', saveCreds);
 
   sock.ev.on('connection.update', async (update) => {
-    const { connection, qr, lastDisconnect } = update;
+    const { connection, qr } = update;
 
     if (qr) {
       const qrImage = await qrcode.toDataURL(qr, { width: 400 });
@@ -185,18 +215,14 @@ Need help? View channel for updates.`;
   });
 }
 
-io.on('connection', (socket) => {
-  const userId = `user_${Date.now()}`;
-  createNewSession(userId, socket);
-});
+// Only run the socket server if we are in generator mode (no session ID)
+if (!process.env.SESSION_ID) {
+  io.on('connection', (socket) => {
+    const userId = `user_${Date.now()}`;
+    createNewSession(userId, socket);
+  });
 
-server.listen(PORT, async () => {
-  console.log(`==> AstraX Enterprise operational on port ${PORT}`);
-  
-  if (process.env.SESSION_ID) {
-    console.log('==> Detected SESSION_ID. Booting AstraX Bot Engine...');
-    await bot.init();
-  } else {
-    console.log('==> No SESSION_ID found. Server running in Session Generator mode.');
-  }
-});
+  server.listen(PORT, async () => {
+    console.log(`==> AstraX: Generator Mode Active on port ${PORT}`);
+  });
+}
