@@ -3,24 +3,22 @@
  */
 export default {
   name: "revoke",
-  aliases: ["resetlink", "revokelink"],
+  aliases: ["resetlink"],
   category: "admin",
   description: "Invalidate the current link and generate a new one.",
-  usage: "!revoke",
+  usage: "revoke",
   permissions: 5,
   groupOnly: true,
   execute: async (ctx) => {
     try {
       await ctx.sock.groupRevokeInvite(ctx.jid);
       const code = await ctx.sock.groupInviteCode(ctx.jid);
-      const output = `┌──⌈ LINK REVOKED ⌋
+      ctx.reply(`┌──⌈ ♻️ REVOKE ⌋
 ┃ Action: Link Reset
-┃ New Link: chat.whatsapp.com/${code}
-┃ Status: Secure
-└────────────────`;
-      await ctx.reply(output);
+┃ New Link: https://chat.whatsapp.com/${code}
+└────────────────`);
     } catch (e) {
-      ctx.reply("┌──⌈ ERROR ⌋\n┃ Operation failed.\n└────────────────");
+      ctx.reply(`┌──⌈ ERROR ⌋\n┃ Operation failed.\n└────────────────`);
     }
   }
 };

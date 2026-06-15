@@ -3,22 +3,21 @@
  */
 export default {
   name: "grouplink",
-  aliases: ["linkgc", "link"],
+  aliases: ["link"],
   category: "admin",
   description: "Retrieve the current group invite link.",
-  usage: "!grouplink",
+  usage: "grouplink",
   permissions: 5,
   groupOnly: true,
   execute: async (ctx) => {
     try {
       const code = await ctx.sock.groupInviteCode(ctx.jid);
-      const output = `┌──⌈ GROUP LINK ⌋
+      ctx.reply(`┌──⌈ 🔗 GROUP LINK ⌋
 ┃ Link: https://chat.whatsapp.com/${code}
-┃ Status: Active
-└────────────────`;
-      await ctx.reply(output);
+┃ Status: Secure & Active
+└────────────────`);
     } catch (e) {
-      ctx.reply("┌──⌈ ERROR ⌋\n┃ Failed to fetch link.\n└────────────────");
+      ctx.reply(`┌──⌈ ERROR ⌋\n┃ Failed to fetch link.\n└────────────────`);
     }
   }
 };

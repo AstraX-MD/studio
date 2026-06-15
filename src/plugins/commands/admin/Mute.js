@@ -1,25 +1,23 @@
 /**
- * @fileOverview Set group to admins only.
+ * @fileOverview Restrict message sending to admins only.
  */
 export default {
   name: "mute",
-  aliases: ["closegc", "lockgroup"],
+  aliases: ["close", "lockgc"],
   category: "admin",
   description: "Allow only admins to send messages in the group.",
-  usage: "!mute",
+  usage: "mute",
   permissions: 5,
   groupOnly: true,
   execute: async (ctx) => {
     try {
       await ctx.sock.groupSettingUpdate(ctx.jid, "announcement");
-      const output = `┌──⌈ GROUP SETTINGS ⌋
-┃ Action: Muted Group
-┃ Target: All Members
+      ctx.reply(`┌──⌈ 🔇 GROUP MUTE ⌋
 ┃ Status: Admin Only
-└────────────────`;
-      await ctx.reply(output);
+┃ Action: Chat Closed
+└────────────────`);
     } catch (e) {
-      ctx.reply("┌──⌈ ERROR ⌋\n┃ Operation failed.\n└────────────────");
+      ctx.reply(`┌──⌈ ERROR ⌋\n┃ Operation failed.\n└────────────────`);
     }
   }
 };

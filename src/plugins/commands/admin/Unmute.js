@@ -1,25 +1,23 @@
 /**
- * @fileOverview Set group to everyone.
+ * @fileOverview Allow everyone to send messages.
  */
 export default {
   name: "unmute",
-  aliases: ["opengc", "unlockgroup"],
+  aliases: ["open", "unlockgc"],
   category: "admin",
   description: "Allow all members to send messages in the group.",
-  usage: "!unmute",
+  usage: "unmute",
   permissions: 5,
   groupOnly: true,
   execute: async (ctx) => {
     try {
       await ctx.sock.groupSettingUpdate(ctx.jid, "not_announcement");
-      const output = `┌──⌈ GROUP SETTINGS ⌋
-┃ Action: Unmuted Group
-┃ Target: All Members
-┃ Status: Everyone
-└────────────────`;
-      await ctx.reply(output);
+      ctx.reply(`┌──⌈ 🔊 GROUP UNMUTE ⌋
+┃ Status: Open for All
+┃ Action: Chat Opened
+└────────────────`);
     } catch (e) {
-      ctx.reply("┌──⌈ ERROR ⌋\n┃ Operation failed.\n└────────────────");
+      ctx.reply(`┌──⌈ ERROR ⌋\n┃ Operation failed.\n└────────────────`);
     }
   }
 };

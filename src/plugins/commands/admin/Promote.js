@@ -6,11 +6,13 @@ export default {
   aliases: ["admin", "pa"],
   category: "admin",
   description: "Give administrative privileges to a member.",
-  usage: "!promote <tag/reply/number>",
+  usage: "promote <tag/reply/number>",
   permissions: 5,
   groupOnly: true,
   execute: async (ctx, args) => {
+    const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
     let target;
+
     if (ctx.msg.message?.extendedTextMessage?.contextInfo?.participant) {
       target = ctx.msg.message.extendedTextMessage.contextInfo.participant;
     } else if (ctx.msg.message?.extendedTextMessage?.contextInfo?.mentionedJid?.[0]) {
@@ -19,18 +21,17 @@ export default {
       target = args[0].replace(/[^0-9]/g, '') + '@s.whatsapp.net';
     }
 
-    if (!target) return ctx.reply("┌──⌈ ERROR ⌋\n┃ Target required.\n└────────────────");
+    if (!target) return ctx.reply(`┌──⌈ ERROR ⌋\n┃ Use: ${prefix}promote @tag\n└────────────────`);
 
     try {
       await ctx.sock.groupParticipantsUpdate(ctx.jid, [target], "promote");
-      const output = `┌──⌈ PROMOTE ⌋
+      const output = `┌──⌈ 🛡️ PROMOTE ⌋
 ┃ Target: @${target.split('@')[0]}
-┃ Action: Promoted to Admin
-┃ Status: Authorized
+┃ Status: New Administrator
 └────────────────`;
       await ctx.sock.sendMessage(ctx.jid, { text: output, mentions: [target] });
     } catch (e) {
-      ctx.reply("┌──⌈ ERROR ⌋\n┃ Execution failed.\n└────────────────");
+      ctx.reply(`┌──⌈ ERROR ⌋\n┃ Operation failed.\n└────────────────`);
     }
   }
 };

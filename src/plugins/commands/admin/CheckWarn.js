@@ -1,12 +1,11 @@
 /**
- * @fileOverview Check user warnings.
+ * @fileOverview Check warning status.
  */
 export default {
   name: "warnings",
-  aliases: ["checkwarn"],
   category: "admin",
-  description: "Check how many warnings a member has accumulated.",
-  usage: "!warnings <tag/reply>",
+  description: "View warning count for a member.",
+  usage: "warnings <tag/reply>",
   permissions: 1,
   groupOnly: true,
   execute: async (ctx) => {
@@ -22,10 +21,10 @@ export default {
     const key = `warns:${ctx.jid}:${target.split('@')[0]}`;
     const count = (await ctx.bot.db.get('group_warns', key)) || 0;
 
-    const output = `┌──⌈ WARN STATUS ⌋
+    const output = `┌──⌈ 📜 WARN LOG ⌋
 ┃ Target: @${target.split('@')[0]}
-┃ Warnings: ${count}/3
-┃ Status: ${count >= 2 ? 'Critical' : 'Safe'}
+┃ Total Warns: ${count}/3
+┃ Risk: ${count >= 2 ? 'High' : 'Low'}
 └────────────────`;
     await ctx.sock.sendMessage(ctx.jid, { text: output, mentions: [target] });
   }
