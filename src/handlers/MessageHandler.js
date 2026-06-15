@@ -1,5 +1,5 @@
 /**
- * @fileOverview Inbound message router with dynamic settings support.
+ * @fileOverview Inbound message router. Updated to support Self-Mode (responding to own messages).
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -11,7 +11,7 @@ class MessageHandler {
   }
 
   async handle(msg) {
-    // 1. Basic sanity checks
+    // 1. Basic sanity checks (Keep broadcast and empty messages filtered)
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
 
     const ctx = new Context(this.bot, msg);
@@ -19,11 +19,11 @@ class MessageHandler {
     // 2. Resolve Dynamic Prefix (Global or Group-specific)
     const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
     
-    // 3. Maintenance Mode Check (Only Owners bypass)
+    // 3. Maintenance Mode Check (Only Owners/Root bypass)
     const isMaintenance = await this.bot.managers.settings.isMaintenance();
     if (isMaintenance) {
       const userRole = await this.bot.managers.roles.getRole(ctx.sender);
-      if (userRole < 9) return; // Exit if not Owner/Root
+      if (userRole < 9) return; 
     }
 
     // 4. Command Detection
