@@ -1,6 +1,6 @@
 /**
  * @fileOverview Main entry point for AstraX Enterprise.
- * Integrates Bot Core with a Real-Time Glassmorphic Management Dashboard.
+ * Integrates Bot Core with a Real-Time Glassmorphic Management Dashboard and Live HTML Renderer.
  */
 import 'dotenv/config';
 import express from 'express';
@@ -28,6 +28,22 @@ const PORT = process.env.PORT || 9002;
 // Middleware
 app.use(express.static(join(__dirname, 'public')));
 app.use(express.json());
+
+/**
+ * LIVE HTML RENDERER
+ * Allows the AI to generate and preview web apps instantly.
+ */
+app.get('/render', (req, res) => {
+  const code = req.query.html;
+  if (!code) return res.status(400).send('<h1>AstraX Render Engine</h1><p>No payload detected.</p>');
+  
+  try {
+    const decoded = Buffer.from(code, 'base64').toString('utf-8');
+    res.send(decoded);
+  } catch (e) {
+    res.status(500).send('<h1>Render Error</h1><p>Invalid encoding signature.</p>');
+  }
+});
 
 /**
  * DASHBOARD API ROUTES
@@ -103,6 +119,7 @@ async function start() {
   
   httpServer.listen(PORT, () => {
     console.log(`==> DASHBOARD: Operational at http://localhost:${PORT}`);
+    console.log(`==> RENDERER: Available at http://localhost:${PORT}/render`);
   });
 
   try {
