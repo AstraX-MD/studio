@@ -10,15 +10,11 @@ import {
   Puzzle, 
   ShieldAlert, 
   Users, 
-  Coins, 
   BrainCircuit, 
   Terminal, 
   QrCode,
-  Settings, 
-  Activity,
-  ChevronRight,
-  Database,
-  CloudBackup
+  CloudUpload,
+  Activity
 } from "lucide-react"
 
 import { cn } from "@/lib/utils"
@@ -33,7 +29,6 @@ import {
   SidebarMenu,
   SidebarMenuButton,
   SidebarMenuItem,
-  useSidebar,
 } from "@/components/ui/sidebar"
 import { Progress } from "@/components/ui/progress"
 
@@ -67,6 +62,11 @@ const navItems = [
     title: "AI Subsystem",
     url: "/dashboard/ai",
     icon: BrainCircuit,
+  },
+  {
+    title: "Deployment",
+    url: "/dashboard/deployment",
+    icon: CloudUpload,
   },
   {
     title: "Terminal Logs",
@@ -131,9 +131,9 @@ export function DashboardSidebar() {
             <div className="space-y-1.5">
               <div className="flex justify-between text-[10px] font-mono uppercase text-muted-foreground">
                 <span>Active Sessions</span>
-                <span>12 / 100</span>
+                <span>1 / 100</span>
               </div>
-              <Progress value={12} className="h-1 bg-white/5" />
+              <Progress value={1} className="h-1 bg-white/5" />
             </div>
           </SidebarGroupContent>
         </SidebarGroup>
