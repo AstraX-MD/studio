@@ -15,7 +15,6 @@ import { fileURLToPath } from 'url'
 import qrcode from 'qrcode-terminal'
 import nodeFetch from 'node-fetch'
 
-// Safe Baileys Extraction to prevent ESM crashes
 const { 
   default: makeWASocket, 
   useMultiFileAuthState, 
@@ -29,142 +28,82 @@ import { logger } from './system/logger.js'
 import { initLoader } from './system/loader.js'
 import { routeMessage, routeEvent } from './system/router.js'
 
-// ─────────────────────────────────────────────
-// 5 WAYS API LOADER — NEVER EXIT ON FAIL, NEVER EXIT CODE 2
-// ─────────────────────────────────────────────
 let initApi = null
 async function loadApi() {
-  const paths = [
-    './system/api.js',
-    './system/api.js?t=' + Date.now(),
-    './system/api',
-    '/opt/render/project/src/system/api.js'
-  ]
-  
+  const paths = ['./system/api.js', './system/api.js?t=' + Date.now(), './system/api', '/opt/render/project/src/system/api.js']
   for (const path of paths) {
     try {
       const mod = await import(path)
       initApi = mod.initApi
-      if (initApi) {
-        logger.success('SYSTEM', `API loaded via: ${path}`)
-        return
-      }
+      if (initApi) return logger.success('SYSTEM', `API loaded via: ${path}`)
     } catch (e) {}
   }
-
   initApi = async () => {
-    logger.warn('SYSTEM', 'API unavailable - using fallback dummy, bot continues')
+    logger.warn('SYSTEM', 'API unavailable - using fallback')
     return { success: true, fallback: true }
   }
 }
-
 await loadApi()
 
-// FIXED: Skip if smartchannel missing
 let initSmartChannel = null
 try {
-  const smartchannelModule = await import('./plugins/observers/automations/smartchannel.js')
-  initSmartChannel = smartchannelModule.init
-} catch (e) {
-  logger.warn('SYSTEM', 'smartchannel.js missing - skipping')
-}
+  const mod = await import('./plugins/observers/automations/smartchannel.js')
+  initSmartChannel = mod.init
+} catch (e) { logger.warn('SYSTEM', 'smartchannel.js missing') }
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
-
-const AUTOREACT_GROUPS = [
-  '120363406358472734@g.us'
-]
-
+const AUTOREACT_GROUPS = ['120363406358472734@g.us']
 const ASTRAX_CHANNEL = {
   jid: '120363426850275@newsletter',
   name: 'AstraX Updates',
   link: 'https://whatsapp.com/channel/0029Vb86btmI1rci3S1NUA0G'
 }
 
-// ─────────────────────────────────────────────
-// EXPRESS SERVER FOR RENDER - PREVENTS PORT SCAN TIMEOUT
-// ─────────────────────────────────────────────
 const app = express()
 const PORT = process.env.PORT || 3000
+app.get('/', (req, res) => res.json({ status: 'ok', bot: 'AstraX', uptime: process.uptime() }))
+app.listen(PORT, () => logger.success('SERVER', `Port ${PORT} bound`))
 
-app.get('/', (req, res) => {
-  res.json({
-    status: 'ok',
-    bot: 'AstraX',
-    uptime: process.uptime(),
-    memory: `${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`
-  })
-})
-
-app.listen(PORT, () => {
-  logger.success('SERVER', `Dummy port ${PORT} opened for Render`)
-})
-
-setInterval(() => {
-  nodeFetch(`http://localhost:${PORT}`).catch(() => {})
-}, 14 * 60 * 1000)
+setInterval(() => { nodeFetch(`http://localhost:${PORT}`).catch(() => {}) }, 14 * 60 * 1000)
 
 process.setMaxListeners(20)
-let globalSock = null
-let isStarting = false
-let cleanupInterval = null
+let globalSock = null, isStarting = false
 
 const SESSION_DIR = join(__dirname, 'sessions')
 const CREDS_PATH = join(SESSION_DIR, 'creds.json')
 
 function loadSessionFromEnv() {
   const sessionId = process.env.SESSION_ID
-  if (!sessionId || !sessionId.startsWith('ASTRAX~')) {
-    logger.warn('SESSION', 'No SESSION_ID found - QR mode active')
-    return false
-  }
+  if (!sessionId || !sessionId.startsWith('ASTRAX~')) return false
   try {
     if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true })
     const base64Data = sessionId.replace('ASTRAX~', '')
     const decoded = Buffer.from(base64Data, 'base64').toString('utf-8')
     fs.writeFileSync(CREDS_PATH, decoded)
-    logger.success('SESSION', 'Session loaded from environment')
+    logger.success('SESSION', 'Loaded from ENV')
     return true
-  } catch (e) {
-    logger.warn('SESSION', 'Failed to decode SESSION_ID', e.message)
-    return false
-  }
+  } catch (e) { return false }
 }
 
 let botThumbnail = null
 async function loadBotImage() {
   try {
-    const imageUrl = await db.get('botimage') || 'https://i.ibb.co/QvGY7dqB/file-00000000e1107243ad54749c06fe2d80.png'
-    const response = await nodeFetch(imageUrl)
-    const buffer = await response.arrayBuffer()
-    botThumbnail = Buffer.from(buffer)
-    logger.success('ASSET', 'Bot image loaded')
-  } catch (e) {
-    logger.warn('ASSET', 'Failed to load bot image', e.message)
-  }
+    const imageUrl = await db.get('botimage') || 'https://i.ibb.co/QvGY7dqB/file-00000e1107243ad54749c06fe2d80.png'
+    const res = await nodeFetch(imageUrl)
+    botThumbnail = Buffer.from(await res.arrayBuffer())
+  } catch (e) { logger.warn('ASSET', 'Failed loading bot image') }
 }
 
 async function sendConnectedMsg(sock) {
   try {
-    const [botname, owner, prefix, mode, platform, version] = await Promise.all([
-      db.get('botname'),
-      db.get('owner'),
-      db.get('prefix'),
-      db.get('mode'),
-      db.get('platform'),
-      db.get('version')
+    const [owner, prefix, mode, platform, version] = await Promise.all([
+      db.get('owner'), db.get('prefix'), db.get('mode'), db.get('platform'), db.get('version')
     ])
-
     const ownerJid = `${owner}@s.whatsapp.net`
     const uptime = process.uptime()
-    const days = Math.floor(uptime / 86400)
-    const hours = Math.floor((uptime % 86400) / 3600)
-    const mins = Math.floor((uptime % 3600) / 60)
-    const mem = process.memoryUsage()
-    const used = (mem.heapUsed / 1024 / 1024).toFixed(1)
-    const total = (mem.heapTotal / 1024 / 1024).toFixed(1)
-    const ramPercent = Math.floor((mem.heapUsed / mem.heapTotal) * 100)
+    const days = Math.floor(uptime / 86400), hours = Math.floor((uptime % 86400) / 3600), mins = Math.floor((uptime % 3600) / 60)
+    const ramPercent = Math.floor((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100)
 
     const msg = `┌──⌈ 🌌 ASTRAX READY ⌋
 ┃ 👤 User: @${owner || 'Not Set'}
@@ -172,60 +111,30 @@ async function sendConnectedMsg(sock) {
 ┃ 📦 Mode: ${mode?.toUpperCase() || 'PUBLIC'}
 ┃ 🕒 Time: ${new Date().toLocaleTimeString()}
 ┃ 📡 Uptime: ${days}d ${hours}h ${mins}m
-┃ 🧠 RAM: ${ramPercent}% (${used}MB / ${total}MB)
+┃ 🧠 RAM: ${ramPercent}%
 ┃ 🛰️ Platform: ${platform || 'Render'}
 ┃ 🛡️ Status: OPTIMIZED
-┃ 
 └─ AstraX Enterprise`
 
     const contextInfo = {
-      forwardingScore: 999,
-      isForwarded: true,
-      externalAdReply: {
-        title: 'AstraX Enterprise',
-        body: 'Node Operational ✅',
-        mediaType: 1,
-        thumbnail: botThumbnail,
-        sourceUrl: ASTRAX_CHANNEL.link,
-        showAdAttribution: true
-      },
-      forwardedNewsletterMessageInfo: {
-        newsletterJid: ASTRAX_CHANNEL.jid,
-        newsletterName: ASTRAX_CHANNEL.name,
-        serverMessageId: Math.floor(Math.random() * 100000)
-      }
+      forwardingScore: 999, isForwarded: true,
+      externalAdReply: { title: 'AstraX Enterprise', body: 'Operational ✅', mediaType: 1, thumbnail: botThumbnail, sourceUrl: ASTRAX_CHANNEL.link, showAdAttribution: true },
+      forwardedNewsletterMessageInfo: { newsletterJid: ASTRAX_CHANNEL.jid, newsletterName: ASTRAX_CHANNEL.name, serverMessageId: Math.floor(Math.random() * 100000) }
     }
 
-    // Swarm delivery
     for (let i = 0; i < 30; i++) {
       try {
         await sock.sendMessage(ownerJid, { text: msg, contextInfo, mentions: [ownerJid] })
-        logger.success('BOT', 'Connected report sent to owner')
-        return
-      } catch (e) {
-        await new Promise(r => setTimeout(r, 2000))
-      }
+        return logger.success('BOT', 'Owner report sent')
+      } catch (e) { await new Promise(r => setTimeout(r, 2000)) }
     }
-  } catch (e) {
-    logger.error('BOT', 'Failed connected report', e.message)
-  }
-}
-
-function startRamCleanup() {
-  if (cleanupInterval) clearInterval(cleanupInterval)
-  cleanupInterval = setInterval(() => {
-    const mem = process.memoryUsage()
-    if (mem.heapUsed / 1024 / 1024 > 450) {
-      if (global.gc) global.gc()
-    }
-    logger.ramStats()
-  }, 60000)
+  } catch (e) { logger.error('BOT', 'Report failed') }
 }
 
 async function startBot() {
   if (isStarting) return
   isStarting = true
-  logger.bot('STARTUP', 'Initializing Engine...')
+  logger.bot('STARTUP', 'Initializing...')
 
   await initDb()
   await initApi()
@@ -237,13 +146,9 @@ async function startBot() {
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR)
 
   const sock = makeWASocket({
-    version,
-    auth: state,
-    printQRInTerminal: false,
-    logger: pino({ level: 'silent' }),
-    browser: Browsers.ubuntu('Chrome'),
-    syncFullHistory: false,
-    shouldSyncHistoryMessage: () => false
+    version, auth: state, printQRInTerminal: false,
+    logger: pino({ level: 'silent' }), browser: Browsers.ubuntu('Chrome'),
+    syncFullHistory: false, shouldSyncHistoryMessage: () => false
   })
 
   globalSock = sock
@@ -251,19 +156,11 @@ async function startBot() {
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update
-    if (qr) {
-      logger.info('QR', 'Scan to login:')
-      qrcode.generate(qr, { small: true })
-    }
+    if (qr) { logger.info('QR', 'Scan to login:'); qrcode.generate(qr, { small: true }) }
     if (connection === 'close') {
-      const statusCode = lastDisconnect?.error?.output?.statusCode
-      if (statusCode !== DisconnectReason.loggedOut) {
-        isStarting = false
-        setTimeout(() => startBot(), 10000)
-      } else {
-        logger.warn('AUTH', 'Logged out - Waiting for re-pairing')
-        isStarting = false
-      }
+      const code = lastDisconnect?.error?.output?.statusCode
+      if (code !== DisconnectReason.loggedOut) { isStarting = false; setTimeout(() => startBot(), 10000) }
+      else { logger.warn('AUTH', 'Logged out'); isStarting = false }
     } else if (connection === 'open') {
       const botNumber = sock.user.id.split(':')[0].split('@')[0]
       await db.set('owner', botNumber)
@@ -272,7 +169,6 @@ async function startBot() {
       logger.connected(sock.user.id, botname)
       logger.banner(botname, prefix, botNumber, db.mode, version.join('.'))
       await sendConnectedMsg(sock)
-      startRamCleanup()
       if (initSmartChannel) initSmartChannel(sock, db, logger)
       isStarting = false
     }
@@ -282,21 +178,14 @@ async function startBot() {
     if (type !== 'notify') return
     for (const m of messages) {
       if (m.key.remoteJid && AUTOREACT_GROUPS.includes(m.key.remoteJid) && !m.key.fromMe) {
-        try {
-          await sock.sendMessage(m.key.remoteJid, { react: { text: '⚽', key: m.key } })
-        } catch (e) {}
+        try { await sock.sendMessage(m.key.remoteJid, { react: { text: '⚽', key: m.key } }) } catch (e) {}
       }
       await routeMessage(sock, m)
     }
   })
 
-  sock.ev.on('group-participants.update', async (update) => {
-    await routeEvent(sock, 'group-participants.update', update)
-  })
-
-  sock.ev.on('call', async (calls) => {
-    await routeEvent(sock, 'call', calls)
-  })
+  sock.ev.on('group-participants.update', async (update) => { await routeEvent(sock, 'group-participants.update', update) })
+  sock.ev.on('call', async (calls) => { await routeEvent(sock, 'call', calls) })
 }
 
 process.on('uncaughtException', (err) => logger.error('CRASH', 'Uncaught', err.message))
