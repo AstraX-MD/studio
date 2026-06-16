@@ -1,21 +1,18 @@
 /**
- * @fileOverview Main Menu.
+ * @fileOverview AstraX Master Menu.
  */
 export default {
   name: "help",
   aliases: ["menu", "commands"],
   category: "utility",
-  description: "Show all commands.",
+  description: "Display all available commands organized by category.",
   usage: "help",
-  cooldown: 5,
   permissions: 1,
   execute: async (ctx) => {
-    const botName = ctx.bot.config.name;
     const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
-    const thumbnail = ctx.bot.config.thumbnail;
-
     const commands = Array.from(ctx.bot.commands.values());
     const seen = new Set();
+    
     const uniqueCommands = commands.filter(c => {
       if (seen.has(c.name)) return false;
       seen.add(c.name);
@@ -29,14 +26,17 @@ export default {
       categories[cat].push(cmd.name);
     });
 
-    let output = `┌──⌈ ${botName.toUpperCase()} ⌋
+    const totalUnique = uniqueCommands.length;
+    const totalTriggers = ctx.bot.commands.size;
+
+    let output = `┌──⌈ 🌌 ASTRAX ⌋
 ┃ User: ${ctx.pushName}
-┃ Prefix: [ ${prefix} ]
-┃ Modules: ${uniqueCount}
-┃ 
+┃ Unique Modules: ${totalUnique}
+┃ Active Triggers: ${totalTriggers}
+┃
 `;
 
-    const displayOrder = ['admin', 'ai-chat', 'ai-image', 'economy', 'downloaders', 'logos', 'reactions', 'tools', 'security', 'utility'];
+    const displayOrder = ['admin', 'ai-chat', 'ai-image', 'ai-video', 'ai-music', 'economy', 'downloaders', 'logos', 'reactions', 'tools', 'security', 'utility'];
     
     displayOrder.forEach(cat => {
       if (categories[cat]) {
@@ -47,7 +47,7 @@ export default {
     output += `└─ AstraX System`;
 
     await ctx.sock.sendMessage(ctx.jid, { 
-      image: { url: thumbnail },
+      image: { url: ctx.bot.config.thumbnail },
       caption: output
     }, { quoted: ctx.msg });
   }

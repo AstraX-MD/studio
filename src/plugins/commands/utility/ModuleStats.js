@@ -1,32 +1,28 @@
 /**
- * @fileOverview Detailed command module statistics.
+ * @fileOverview Command Module Auditor.
  */
 export default {
   name: "modulestats",
-  aliases: ["cms", "auditcmds"],
+  aliases: ["cms", "audit"],
   category: "utility",
-  description: "Expert audit of command modules and entry points.",
+  description: "View the exact counts for unique logic files vs total command triggers.",
   usage: "modulestats",
-  cooldown: 5,
   permissions: 1,
   execute: async (ctx) => {
-    const uniqueCount = new Set(ctx.bot.commands.values()).size;
-    const triggerCount = ctx.bot.commands.size;
+    const totalUnique = new Set(ctx.bot.commands.values()).size;
+    const totalTriggers = ctx.bot.commands.size;
 
     const output = `┌──⌈ 📊 MODULE AUDIT ⌋
+┃ 
+┃ Unique Logic: ${totalUnique} Files
+┃ Active Triggers: ${totalTriggers} (inc. Aliases)
+┃ 
+┃ Note: Unique modules are 
+┃ the actual code files. 
+┃ Triggers include every 
+┃ alternative name.
 ┃
-┃ Unique Modules: ${uniqueCount}
-┃ (Individual command files)
-┃
-┃ Entry Points: ${triggerCount}
-┃ (Names + All Aliases)
-┃
-├─⊷ Status: NODE_STABLE
-├─⊷ Engine: AstraX Core
-┃
-┃ v1.2.5 is operating at
-┃ peak performance.
-└────────────────`;
+└─ AstraX System`;
     ctx.reply(output);
   }
 };

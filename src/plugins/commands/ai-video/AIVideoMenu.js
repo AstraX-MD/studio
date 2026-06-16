@@ -1,20 +1,20 @@
 /**
- * @fileOverview Specialized AI Chat Menu.
+ * @fileOverview Specialized AI Video Menu.
  */
 export default {
-  name: "aichatmenu",
-  aliases: ["aimenu"],
-  category: "ai-chat",
-  description: "Display all chat-based AI models.",
-  usage: "aichatmenu",
+  name: "aivideomenu",
+  aliases: ["aivideo"],
+  category: "ai-video",
+  description: "Display all AI video generation tools.",
+  usage: "aivideomenu",
   permissions: 1,
   execute: async (ctx) => {
     const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
     const commands = Array.from(ctx.bot.commands.values())
-      .filter(cmd => cmd.category === 'ai-chat' && !cmd.name.endsWith('menu'))
+      .filter(cmd => cmd.category === 'ai-video' && !cmd.name.endsWith('menu'))
       .map(cmd => cmd.name);
 
-    let output = `┌──⌈ 🤖 AI CHAT ⌋\n┃\n`;
+    let output = `┌──⌈ 🎥 AI VIDEOS ⌋\n┃\n`;
     commands.forEach(cmd => output += `├─⊷ ${prefix}${cmd}\n`);
     output += `┃\n└─ AstraX System`;
 

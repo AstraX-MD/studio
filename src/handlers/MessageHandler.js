@@ -1,5 +1,6 @@
 /**
- * @fileOverview Simple, Clean Message Router with Colors.
+ * @fileOverview AstraX High-Speed Message Router.
+ * v1.2.5: Removed all fromMe restrictions. Professional Colored Logs.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -11,16 +12,16 @@ class MessageHandler {
   }
 
   async handle(msg) {
-    // 1. Safety Filter
+    // 1. Basic Safety
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
 
     const ctx = new Context(this.bot, msg);
-    
-    // 2. Identify Sender & Location
-    const sender = ctx.sender ? ctx.sender.split('@')[0] : 'SYSTEM';
+    if (!ctx.sender) return;
+
+    const senderId = ctx.sender.split('@')[0];
     const chatType = ctx.isGroup ? '\x1b[35m[GROUP]\x1b[0m' : '\x1b[34m[PRIVATE]\x1b[0m';
     
-    // 3. Command Resolution
+    // 2. Command Resolution
     const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
     let isCommand = false;
     let commandName = '';
@@ -33,17 +34,16 @@ class MessageHandler {
       commandName = args.shift().toLowerCase();
     }
 
-    // 4. Clean Colored Logging
-    // Cyan for MESSAGE, Green for COMMAND
+    // 3. Colored Expert Logging
     const label = isCommand ? '\x1b[32m[COMMAND]\x1b[0m' : '\x1b[36m[MESSAGE]\x1b[0m';
-    const content = ctx.text ? ctx.text.substring(0, 40) : '[MEDIA]';
-    console.log(`${label} ${chatType} @${sender} | ${content}${content.length > 39 ? '...' : ''}`);
+    const cleanContent = ctx.text ? ctx.text.substring(0, 50).replace(/\n/g, ' ') : '[MEDIA]';
+    
+    console.log(`${label} ${chatType} @${senderId} | ${cleanContent}${ctx.text?.length > 50 ? '...' : ''}`);
 
-    // 5. Recursive Loop Guard
-    // Allow bot to trigger commands but prevent it from answering its own boxed reports
-    if (ctx.fromMe && (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌'))) return;
+    // 4. Recursive Loop Guard (Ignore bot's own formatted boxed results to prevent loops)
+    if (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌')) return;
 
-    // 6. Execution
+    // 5. Execution
     if (isCommand && commandName) {
       const command = this.bot.commands.get(commandName);
       if (command) {
