@@ -9,7 +9,7 @@ export default {
   usage: "channelforward <on/off>",
   permissions: 9,
   execute: async (ctx, args) => {
-    const botName = await ctx.bot.managers.settings.get('core', 'name') || "AstraX";
+    const botName = await ctx.db.get('botname') || "AstraX";
     const mode = args[0]?.toLowerCase();
 
     if (mode === 'on' || mode === 'off') {
@@ -20,7 +20,7 @@ export default {
 ┃
 ┃ Status: ${state ? '✅ ENABLED' : '❌ DISABLED'}
 ┃ Source: ASTRAX UPDATES
-┃ Effect: Global Forwarding
+┃ Effect: GLOBAL FORWARD
 ┃
 ├─⊷ On: All msgs appear forwarded
 ├─⊷ Off: Normal messaging mode
