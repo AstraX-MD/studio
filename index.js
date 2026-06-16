@@ -8,6 +8,14 @@
 import 'dotenv/config'
 import express from 'express'
 import baileys from '@whiskeysockets/baileys'
+const { 
+  default: makeWASocket, 
+  DisconnectReason, 
+  Browsers, 
+  initAuthCreds, 
+  BufferJSON 
+} = baileys
+
 import pino from 'pino'
 import fs from 'fs'
 import { join, dirname } from 'path'
@@ -15,15 +23,34 @@ import { fileURLToPath } from 'url'
 import qrcode from 'qrcode-terminal'
 import nodeFetch from 'node-fetch'
 
-const makeWASocket = baileys.default || baileys
-const useMultiFileAuthState = baileys.useMultiFileAuthState || (baileys.default && baileys.default.useMultiFileAuthState)
-const DisconnectReason = baileys.DisconnectReason || (baileys.default && baileys.default.DisconnectReason)
-const Browsers = baileys.Browsers || (baileys.default && baileys.default.Browsers)
-
 import { initDb, db } from './system/db.js'
 import { logger } from './system/logger.js'
 import { initLoader } from './system/loader.js'
 import { routeMessage, routeEvent } from './system/router.js'
+
+// ─────────────────────────────────────────────
+// MANUAL AUTH STATE LOGIC — REPLACES useMultiFileAuthState
+// ─────────────────────────────────────────────
+const authFolder = './session'
+if (!fs.existsSync(authFolder)) fs.mkdirSync(authFolder, { recursive: true })
+
+const loadState = () => {
+  const CREDS_PATH = join(authFolder, 'creds.json')
+  try {
+    if (!fs.existsSync(CREDS_PATH)) throw new Error('No creds')
+    const creds = JSON.parse(fs.readFileSync(CREDS_PATH, 'utf-8'), BufferJSON.reviver)
+    return { state: { creds, keys: {} }, saveCreds: () => {
+      fs.writeFileSync(CREDS_PATH, JSON.stringify(state.creds, BufferJSON.replacer, 2))
+    } }
+  } catch {
+    return { state: { creds: initAuthCreds(), keys: {} }, saveCreds: () => {
+      fs.writeFileSync(CREDS_PATH, JSON.stringify(state.creds, BufferJSON.replacer, 2))
+    } }
+  }
+}
+
+const { state, saveCreds } = loadState()
+// ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
 // 5 WAYS API LOADER — NEVER EXIT ON FAIL
@@ -31,7 +58,6 @@ import { routeMessage, routeEvent } from './system/router.js'
 let initApi = null
 async function loadApi() {
   const paths = ['./system/api.js', './system/api.js?t=' + Date.now(), './system/api', '/opt/render/project/src/system/api.js']
-  
   for (const path of paths) {
     try {
       const mod = await import(path)
@@ -42,14 +68,12 @@ async function loadApi() {
       }
     } catch (e) {}
   }
-  
   initApi = async () => {
     logger.warn('SYSTEM', 'API unavailable - using fallback, bot continues')
     return { success: true, fallback: true }
   }
   logger.warn('SYSTEM', 'API loaded via fallback dummy - NO EXIT')
 }
-
 await loadApi()
 
 // FIXED: Skip if smartchannel missing
@@ -64,19 +88,13 @@ try {
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
-const AUTOREACT_GROUPS = [
-  '120363406358472734@g.us'
-]
-
+const AUTOREACT_GROUPS = ['120363406358472734@g.us']
 const ASTRAX_CHANNEL = {
   jid: '120363426850275@newsletter',
   name: 'AstraX Updates',
   link: 'https://whatsapp.com/channel/0029Vb86btmI1rci3S1NUA0G'
 }
 
-// ─────────────────────────────────────────────
-// EXPRESS SERVER FOR RENDER
-// ─────────────────────────────────────────────
 const app = express()
 const PORT = process.env.PORT || 3000
 
@@ -101,17 +119,14 @@ process.setMaxListeners(20)
 let globalSock = null
 let isStarting = false
 
-const SESSION_DIR = join(__dirname, 'sessions')
-const CREDS_PATH = join(SESSION_DIR, 'creds.json')
-
 function loadSessionFromEnv() {
   const sessionId = process.env.SESSION_ID
   if (!sessionId || !sessionId.startsWith('ASTRAX~')) return false
   try {
-    if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true })
     const base64Data = sessionId.replace('ASTRAX~', '')
     const decoded = Buffer.from(base64Data, 'base64').toString('utf-8')
-    fs.writeFileSync(CREDS_PATH, decoded)
+    const creds = JSON.parse(decoded)
+    fs.writeFileSync(join(authFolder, 'creds.json'), JSON.stringify(creds, BufferJSON.replacer, 2))
     logger.success('SESSION', 'Session loaded from ENV')
     return true
   } catch (e) {
@@ -174,7 +189,6 @@ async function sendConnectedMsg(sock) {
       }
     }
 
-    // Attempt to send to owner with 30 retries if needed
     for (let i = 0; i < 30; i++) {
       try {
         await sock.sendMessage(ownerJid, { text: msg, contextInfo, mentions: [ownerJid] })
@@ -197,18 +211,15 @@ async function startBot() {
   try {
     await initDb()
     await initApi()
-    if (!fs.existsSync(CREDS_PATH)) loadSessionFromEnv()
+    if (!fs.existsSync(join(authFolder, 'creds.json'))) loadSessionFromEnv()
     await loadBotImage()
     await initLoader()
   } catch (e) {
     logger.error('STARTUP', 'Init failed, continuing...', e.message)
   }
 
-  // MANUAL VERSIONING AS REQUESTED
   const version = [2, 3000, 1026121747]
   logger.info('BAILEYS', `Using WA v${version.join('.')}`)
-
-  const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR)
 
   const sock = makeWASocket({
     version,

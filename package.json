@@ -1,6 +1,6 @@
 {
   "name": "astrax",
-  "version": "1.2.5",
+  "version": "0.0.1",
   "description": "High stability WhatsApp bot core powered by Baileys",
   "main": "index.js",
   "type": "module",
