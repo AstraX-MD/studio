@@ -55,21 +55,24 @@ async function getSenderPp(sock, jid) {
 async function getChannelContext(sock, m) {
   const enabled = await db.get('channelEnabled')
   if (enabled === false) return null
-  const [jid, link, name, score] = await Promise.all([
-    db.get('channelJid'), db.get('channelLink'), db.get('channelName'), db.get('channelForwardScore')
-  ])
-  const channelJid = (jid || '120363426850275@newsletter').includes('@') ? jid : `${jid || '120363426850275'}@newsletter`
+  const jid = await db.get('channelJid') || '120363426850275@newsletter'
+  const link = await db.get('channelLink') || 'https://whatsapp.com/channel/0029Vb86btmI1rci3S1NUA0G'
+  const name = await db.get('channelName') || 'AstraX Updates'
+  const score = await db.get('channelForwardScore') || 999
+  
+  const channelJid = jid.includes('@') ? jid : `${jid}@newsletter`
   const senderJid = m.key.participant || m.key.remoteJid
   const thumbnail = await getSenderPp(sock, senderJid)
+  
   return {
-    forwardingScore: score || 999, isForwarded: true,
+    forwardingScore: score, isForwarded: true,
     externalAdReply: {
       title: 'AstraX Enterprise', body: `Authorized: ${m.pushName || 'User'}`, mediaType: 1,
-      thumbnail, sourceUrl: link || 'https://whatsapp.com/channel/0029Vb86btmI1rci3S1NUA0G',
+      thumbnail, sourceUrl: link,
       showAdAttribution: true
     },
     forwardedNewsletterMessageInfo: {
-      newsletterJid: channelJid, newsletterName: name || 'AstraX Updates', serverMessageId: 1
+      newsletterJid: channelJid, newsletterName: name, serverMessageId: 1
     }
   }
 }
@@ -138,10 +141,10 @@ export async function routeMessage(sock, m) {
 
     if (body.startsWith(currentPrefix)) {
       const parts = body.slice(currentPrefix.length).trim().split(/\s+/)
-      cmdName = parts[0]?.toLowerCase(); args = parts.slice(1); isCmd = !!getCommand(cmdName)
+      cmdName = (parts[0] || '').toLowerCase(); args = parts.slice(1); isCmd = !!getCommand(cmdName)
     } else if (noPrefix) {
       const parts = body.trim().split(/\s+/)
-      cmdName = parts[0]?.toLowerCase(); args = parts.slice(1); isCmd = !!getCommand(cmdName)
+      cmdName = (parts[0] || '').toLowerCase(); args = parts.slice(1); isCmd = !!getCommand(cmdName)
     }
 
     const contextInfo = await getChannelContext(sock, m)
@@ -151,19 +154,29 @@ export async function routeMessage(sock, m) {
       managers: {
         settings: {
           get: async (cat, key, j) => {
-            const val = await db.get(key) || await db.get(`${cat}:${key}`) || await db.get(`${key}:${j}`)
-            return val !== null ? val : null
+            let val = await db.get(key) || await db.get(`${cat}:${key}`)
+            if (val === null && j) val = await db.getGroupKey(j, key)
+            return val
           },
-          set: async (cat, key, val, j) => await db.set(key, val)
+          set: async (cat, key, val, j) => {
+            if (j && j !== 'global') await db.setGroup(j, key, val)
+            else await db.set(key, val)
+          }
         },
         roles: { getRole: async () => 10 }, // Universal Bypass
         memory: { add: () => {}, get: () => [] }
+      },
+      db: {
+        set: async (key, val) => await db.set(key, val),
+        get: async (key) => await db.get(key),
+        delete: async (key) => await db.delete(key),
+        all: async () => await db.getAll()
       },
       commands, config: { name: botName || 'AstraX', thumbnail: botImage }
     }
 
     const ctx = {
-      sock, m, args, db, logger, prefix: currentPrefix,
+      sock, m, args, db: botCompat.db, logger, prefix: currentPrefix,
       jid: from, from, sender, pushName: m.pushName || 'User',
       isGroup, isOwner: true, isSudo: true, contextInfo, fonts,
       cmdName, body, command: cmdName, bot: botCompat,

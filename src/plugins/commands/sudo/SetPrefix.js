@@ -11,7 +11,7 @@ export default {
     const newPrefix = args[0];
     if (!newPrefix || newPrefix.length > 3) return ctx.reply("┌──⌈ ERROR ⌋\n┃ Invalid prefix symbol.\n└────────────────");
 
-    await ctx.bot.managers.settings.set('core', 'prefix', newPrefix, 'global');
+    await ctx.db.set('prefix', newPrefix);
 
     const output = `┌──⌈ SYSTEM UPDATE ⌋
 ┃ Target: Global Config

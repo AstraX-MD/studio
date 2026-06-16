@@ -11,7 +11,7 @@ export default {
     const newName = args.join(' ');
     if (!newName) return ctx.reply("┌──⌈ ERROR ⌋\n┃ Name cannot be empty.\n└────────────────");
 
-    await ctx.bot.managers.settings.set('core', 'name', newName, 'global');
+    await ctx.db.set('botname', newName);
 
     const output = `┌──⌈ SYSTEM UPDATE ⌋
 ┃ Target: Bot Identity
