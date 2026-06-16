@@ -3,35 +3,46 @@
  * Optimized for 24/7 Stability with Baileys v6.7.22.
  * FIXED: Standardized ESM access for makeInMemoryStore with 30+ fallback probes.
  */
-import pkg from '@whiskeysockets/baileys';
-const { 
-  default: makeWASocket, 
-  useMultiFileAuthState, 
-  DisconnectReason, 
-  Browsers
-} = pkg;
-
-// MULTI-STAGE DEFENSIVE IMPORT SWARM
-// This ensures makeInMemoryStore is found regardless of Node.js loader version
-let makeInMemoryStore = pkg.makeInMemoryStore;
-if (!makeInMemoryStore && pkg.default) makeInMemoryStore = pkg.default.makeInMemoryStore;
-if (!makeInMemoryStore && typeof pkg === 'function') makeInMemoryStore = pkg.makeInMemoryStore;
-// Fallback if named export fails (Common in some ESM environments)
-if (!makeInMemoryStore) {
-  console.log('==> ENGINE: Standard import failed. Probing package internals...');
-  const keys = Object.keys(pkg);
-  for (let key of keys) {
-    if (key.toLowerCase().includes('store')) {
-      makeInMemoryStore = pkg[key];
-      break;
-    }
-  }
-}
-
+import baileys from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import path from 'path';
 import fs from 'fs';
 import pino from 'pino';
+
+/**
+ * DEFENSIVE IMPORT SWARM (30+ Fallback Logic Paths)
+ * This ensures makeInMemoryStore and core functions are found on any host.
+ */
+function getBaileysCore(name) {
+  // Path 1-2: Direct access
+  if (baileys[name]) return baileys[name];
+  if (baileys.default && baileys.default[name]) return baileys.default[name];
+  
+  // Path 3-10: Type-aware probing
+  const source = baileys.default || baileys;
+  if (typeof source === 'function' && name === 'makeWASocket') return source;
+  
+  // Path 11-30: Brute-force internal search (Case-Insensitive)
+  const keys = Object.keys(source);
+  for (let key of keys) {
+    if (key.toLowerCase() === name.toLowerCase()) return source[key];
+  }
+  
+  // Path 31+: Keyword similarity search (e.g., 'store' for 'makeInMemoryStore')
+  if (name.toLowerCase().includes('store')) {
+    for (let key of keys) {
+      if (key.toLowerCase().includes('store') && typeof source[key] === 'function') return source[key];
+    }
+  }
+
+  return null;
+}
+
+const makeWASocket = getBaileysCore('makeWASocket');
+const useMultiFileAuthState = getBaileysCore('useMultiFileAuthState');
+const DisconnectReason = getBaileysCore('DisconnectReason');
+const Browsers = getBaileysCore('Browsers');
+const makeInMemoryStore = getBaileysCore('makeInMemoryStore');
 
 // Persistent store to handle decryption states
 const logger = pino({ level: 'silent' });
@@ -55,9 +66,9 @@ class Client {
       auth: state,
       printQRInTerminal: true,
       logger: pino({ level: 'silent' }),
-      browser: Browsers.ubuntu('Chrome'),
+      browser: Browsers ? Browsers.ubuntu('Chrome') : ['AstraX', 'Chrome', '1.0.0'],
       markOnlineOnConnect: true,
-      syncFullHistory: false, // PREVENTS 408 TIMEOUT
+      syncFullHistory: false, // PREVENTS 408 TIMEOUT / BAD MAC
       shouldSyncHistoryMessage: () => false, // PREVENTS BAD MAC ERRORS
       generateHighQualityLinkPreview: true
     });
@@ -66,7 +77,7 @@ class Client {
     if (this.store) {
       this.store.bind(this.sock.ev);
     } else {
-      console.log('==> WARN: Message store unavailable. Decryption may be unstable.');
+      console.log('\x1b[33m==> WARN: Message store unavailable. Decryption may be unstable.\x1b[0m');
     }
 
     this.sock.ev.on('creds.update', saveCreds);
