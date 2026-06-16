@@ -3,165 +3,140 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AstraX Bot Console</title>
+    <title>AstraX Master Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <script src="https://unpkg.com/lucide@latest"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;700&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background-color: #050406; color: #fff; overflow-x: hidden; }
-        .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); border-radius: 16px; }
-        .tab-btn.active { color: #9747FF; border-top: 2px solid #9747FF; }
-        .bottom-nav { background: #0A0A0C; border-top: 1px solid rgba(255, 255, 255, 0.1); }
-        .glow { box-shadow: 0 0 15px rgba(151, 71, 255, 0.3); }
-        input, select { background: rgba(255, 255, 255, 0.05); border: 1px solid rgba(255, 255, 255, 0.1); border-radius: 8px; color: #fff; padding: 8px 12px; }
-        ::-webkit-scrollbar { width: 4px; }
-        ::-webkit-scrollbar-thumb { background: #9747FF; border-radius: 10px; }
+        body { font-family: 'Inter', sans-serif; background: #050406; color: #fff; overflow-x: hidden; }
+        .tab-content { display: none; padding-bottom: 80px; }
+        .tab-content.active { display: block; }
+        .bottom-nav { background: rgba(13, 11, 19, 0.95); backdrop-blur: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
+        .nav-item { color: #888; transition: 0.3s; }
+        .nav-item.active { color: #9747FF; }
+        .glass-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; }
+        .glow-btn { background: #9747FF; box-shadow: 0 0 20px rgba(151, 71, 255, 0.4); }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #9747FF; }
+        input:checked + .slider:before { transform: translateX(20px); }
+        .loader { width: 12px; height: 12px; background: #9747FF; border-radius: 50%; display: inline-block; animation: pulse 1s infinite; }
+        @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.8); opacity: 0.5; } }
     </style>
 </head>
-<body class="pb-24">
+<body class="p-4">
+
     <!-- Header -->
-    <header class="p-4 flex items-center justify-between sticky top-0 bg-[#050406] z-50">
-        <div class="flex items-center gap-3">
-            <div class="w-10 h-10 rounded-xl bg-purple-600 flex items-center justify-center glow">
-                <i data-lucide="zap" class="text-white w-6 h-6"></i>
-            </div>
-            <div>
-                <h1 class="font-bold text-lg leading-tight" id="headerBotName">AstraX</h1>
-                <p class="text-[10px] text-gray-500 uppercase tracking-widest font-mono">System Active</p>
-            </div>
+    <header class="flex justify-between items-center mb-6">
+        <div>
+            <h1 class="text-2xl font-extrabold tracking-tighter">ASTRAX <span class="text-[#9747FF]">MD</span></h1>
+            <p class="text-xs text-gray-400 font-mono" id="node-id">NODE: CLOUD-READY</p>
         </div>
-        <div class="flex items-center gap-2 px-3 py-1 bg-green-500/10 border border-green-500/20 rounded-full">
-            <div class="w-2 h-2 bg-green-500 rounded-full animate-pulse"></div>
-            <span class="text-[10px] font-bold text-green-500 uppercase tracking-tighter">Live</span>
+        <div class="flex items-center gap-2 bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/20">
+            <div class="loader"></div>
+            <span class="text-[10px] font-bold text-green-500 uppercase tracking-widest">Online</span>
         </div>
     </header>
 
-    <main class="p-4 max-w-lg mx-auto">
-        <!-- Tab 1: Bot Health -->
-        <div id="view-health" class="view space-y-6">
-            <section class="grid grid-cols-2 gap-4">
-                <div class="glass p-4">
-                    <p class="text-[10px] text-gray-400 uppercase">Memory Used</p>
-                    <h3 class="text-xl font-bold" id="statRAM">0 MB</h3>
-                </div>
-                <div class="glass p-4">
-                    <p class="text-[10px] text-gray-400 uppercase">Ping Speed</p>
-                    <h3 class="text-xl font-bold text-green-400" id="statPing">-- ms</h3>
-                </div>
-            </section>
-
-            <section class="glass p-5 space-y-4">
-                <h2 class="font-bold text-purple-400 flex items-center gap-2">
-                    <i data-lucide="settings" class="w-4 h-4"></i> Simple Settings
-                </h2>
-                <div class="space-y-3">
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs text-gray-400">Bot Name</label>
-                        <input type="text" id="inputName" placeholder="AstraX">
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs text-gray-400">Prefix (eg ! or .)</label>
-                        <input type="text" id="inputPrefix" placeholder="!">
-                    </div>
-                    <div class="flex flex-col gap-1">
-                        <label class="text-xs text-gray-400">Bot Image URL</label>
-                        <input type="text" id="inputImage" placeholder="https://...">
-                    </div>
-                    <button onclick="updateSettings()" class="w-full py-3 bg-purple-600 rounded-xl font-bold mt-2 hover:bg-purple-700 active:scale-95 transition-all">Save Changes</button>
-                </div>
-            </section>
-
-            <section class="glass p-5">
-                <h2 class="font-bold text-purple-400 mb-4 flex items-center gap-2">
-                    <i data-lucide="user" class="w-4 h-4"></i> Bot Identity
-                </h2>
-                <div class="flex justify-between items-center py-2 border-b border-white/5">
-                    <span class="text-sm text-gray-400">Owner ID</span>
-                    <span class="text-sm font-mono" id="statOwner">--</span>
-                </div>
-                <div class="flex justify-between items-center py-2">
-                    <span class="text-sm text-gray-400">Total Code Files</span>
-                    <span class="text-sm font-mono" id="statModules">--</span>
-                </div>
-            </section>
-        </div>
-
-        <!-- Tab 2: Safety Switches -->
-        <div id="view-safety" class="view hidden space-y-4">
-            <h2 class="text-2xl font-bold mb-4">Safety Switches</h2>
-            <div id="featureList" class="space-y-3">
-                <!-- Features Load Here -->
-                <div class="animate-pulse flex space-x-4 glass p-4">
-                    <div class="flex-1 space-y-4 py-1">
-                        <div class="h-4 bg-white/5 rounded w-3/4"></div>
-                        <div class="h-4 bg-white/5 rounded"></div>
-                    </div>
-                </div>
+    <!-- TAB 1: HEALTH -->
+    <div id="health" class="tab-content active animate-in fade-in">
+        <div class="grid grid-cols-2 gap-4 mb-6">
+            <div class="glass-card p-4 text-center">
+                <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Owner</p>
+                <p class="text-sm font-mono text-[#9747FF]" id="owner-num">Not Set</p>
+            </div>
+            <div class="glass-card p-4 text-center">
+                <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Speed</p>
+                <p class="text-sm font-mono text-green-400" id="ping-val">124ms</p>
             </div>
         </div>
 
-        <!-- Tab 3: Command List -->
-        <div id="view-commands" class="view hidden space-y-4">
-            <div class="sticky top-16 bg-[#050406] pt-2 pb-4">
-                <h2 class="text-2xl font-bold mb-4">Command Finder</h2>
-                <div class="relative">
-                    <i data-lucide="search" class="absolute left-3 top-3 w-4 h-4 text-gray-500"></i>
-                    <input type="text" id="searchCmd" onkeyup="filterCommands()" placeholder="Search 490+ commands..." class="w-full pl-10 h-12">
-                </div>
+        <div class="glass-card p-6 space-y-6">
+            <h2 class="text-lg font-bold">Update Bot Info</h2>
+            
+            <div class="space-y-2">
+                <label class="text-[10px] text-gray-500 uppercase font-bold">Bot Name</label>
+                <input type="text" id="bot-name" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="AstraX">
             </div>
-            <div id="commandContainer" class="space-y-3 pb-4">
-                <!-- Commands Load Here -->
+
+            <div class="space-y-2">
+                <label class="text-[10px] text-gray-500 uppercase font-bold">Command Prefix</label>
+                <input type="text" id="bot-prefix" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="!">
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-[10px] text-gray-500 uppercase font-bold">Bot Image (Link)</label>
+                <input type="text" id="bot-image" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="https://...">
+            </div>
+
+            <button onclick="updateConfig()" class="w-full glow-btn p-4 rounded-2xl font-bold text-sm">Save Changes</button>
+        </div>
+    </div>
+
+    <!-- TAB 2: SAFETY -->
+    <div id="safety" class="tab-content animate-in fade-in">
+        <h2 class="text-2xl font-bold mb-6">Warden Safety</h2>
+        <div class="space-y-4" id="feature-list">
+            <!-- Switches will load here -->
+        </div>
+    </div>
+
+    <!-- TAB 3: COMMANDS -->
+    <div id="commands" class="tab-content animate-in fade-in">
+        <h2 class="text-2xl font-bold mb-4">Command Finder</h2>
+        <div class="relative mb-6">
+            <input type="text" id="cmd-search" onkeyup="searchCmds()" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="Search 490+ commands...">
+        </div>
+        <div class="space-y-3" id="command-list">
+            <!-- Commands will load here -->
+        </div>
+    </div>
+
+    <!-- TAB 4: STATS -->
+    <div id="stats" class="tab-content animate-in fade-in">
+        <h2 class="text-2xl font-bold mb-6">Bot Analytics</h2>
+        <div class="glass-card p-6 mb-6">
+            <div class="flex justify-between items-center mb-4">
+                <span class="text-gray-400 text-sm">Total Commands Used</span>
+                <span class="text-2xl font-black text-[#9747FF]" id="total-exec">0</span>
+            </div>
+            <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
+                <div class="bg-[#9747FF] h-full" style="width: 75%"></div>
             </div>
         </div>
 
-        <!-- Tab 4: Bot History -->
-        <div id="view-history" class="view hidden space-y-6">
-            <h2 class="text-2xl font-bold">Bot Numbers</h2>
-            <section class="grid grid-cols-2 gap-4">
-                <div class="glass p-4 bg-purple-500/5">
-                    <p class="text-[10px] text-gray-400 uppercase">Usage Total</p>
-                    <h3 class="text-2xl font-bold" id="statTotalUse">0</h3>
-                </div>
-                <div class="glass p-4 bg-red-500/5">
-                    <p class="text-[10px] text-gray-400 uppercase">Errors/Fails</p>
-                    <h3 class="text-2xl font-bold text-red-400" id="statFailed">0</h3>
-                </div>
-            </section>
-
-            <section class="glass p-5">
-                <h2 class="font-bold text-purple-400 mb-3">Popular Commands</h2>
-                <div id="mostUsedList" class="space-y-2">
-                    <!-- Populated via API -->
-                </div>
-            </section>
-
-            <section class="space-y-3">
-                <h2 class="font-bold text-purple-400 px-2">Live Activity</h2>
-                <div id="terminal" class="glass p-4 h-64 overflow-y-auto font-mono text-[10px] space-y-1">
-                    <div class="text-gray-500">>> Waiting for activity...</div>
-                </div>
-            </section>
+        <div class="space-y-4">
+            <h3 class="text-[10px] text-gray-500 uppercase font-bold">Most Popular</h3>
+            <div id="popular-cmds" class="space-y-2"></div>
         </div>
-    </main>
+
+        <div class="mt-8 space-y-4">
+            <h3 class="text-[10px] text-gray-500 uppercase font-bold">Live Activity</h3>
+            <div class="bg-black p-4 rounded-2xl border border-white/10 h-48 overflow-y-auto font-mono text-[10px] text-gray-400 space-y-1" id="log-stream">
+                <div>[SYSTEM] Log stream initialized...</div>
+            </div>
+        </div>
+    </div>
 
     <!-- Bottom Navigation -->
-    <nav class="bottom-nav fixed bottom-0 left-0 right-0 h-20 flex items-center justify-around px-4 z-50">
-        <button onclick="showTab('health')" class="tab-btn flex flex-col items-center gap-1 active" id="btn-health">
-            <i data-lucide="activity" class="w-6 h-6"></i>
+    <nav class="bottom-nav fixed bottom-0 left-0 right-0 h-20 px-6 flex justify-between items-center z-50">
+        <button onclick="showTab('health')" class="nav-item flex flex-col items-center gap-1 active" id="btn-health">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
             <span class="text-[10px] font-bold uppercase">Health</span>
         </button>
-        <button onclick="showTab('safety')" class="tab-btn flex flex-col items-center gap-1" id="btn-safety">
-            <i data-lucide="shield-check" class="w-6 h-6"></i>
+        <button onclick="showTab('safety')" class="nav-item flex flex-col items-center gap-1" id="btn-safety">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
             <span class="text-[10px] font-bold uppercase">Safety</span>
         </button>
-        <button onclick="showTab('commands')" class="tab-btn flex flex-col items-center gap-1" id="btn-commands">
-            <i data-lucide="layers" class="w-6 h-6"></i>
-            <span class="text-[10px] font-bold uppercase">Library</span>
+        <button onclick="showTab('commands')" class="nav-item flex flex-col items-center gap-1" id="btn-commands">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
+            <span class="text-[10px] font-bold uppercase">Search</span>
         </button>
-        <button onclick="showTab('history')" class="tab-btn flex flex-col items-center gap-1" id="btn-history">
-            <i data-lucide="bar-chart-3" class="w-6 h-6"></i>
-            <span class="text-[10px] font-bold uppercase">History</span>
+        <button onclick="showTab('stats')" class="nav-item flex flex-col items-center gap-1" id="btn-stats">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
+            <span class="text-[10px] font-bold uppercase">Stats</span>
         </button>
     </nav>
 
@@ -169,149 +144,97 @@
         const socket = io();
         let allCommands = [];
 
-        // Tab Switching Logic
-        function showTab(tabId) {
-            document.querySelectorAll('.view').forEach(v => v.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            
-            document.getElementById(`view-${tabId}`).classList.remove('hidden');
-            document.getElementById(`btn-${tabId}`).classList.add('active');
-
-            if (tabId === 'safety') loadFeatures();
-            if (tabId === 'commands') loadCommands();
-            if (tabId === 'history') loadAnalytics();
+        function showTab(id) {
+            document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
+            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+            document.getElementById('btn-' + id).classList.add('active');
         }
 
-        // Live Telemetry
-        socket.on('telemetry', (data) => {
-            document.getElementById('statRAM').innerText = data.ram + ' MB';
-            const logEntry = document.createElement('div');
-            logEntry.className = 'text-green-500 opacity-80';
-            logEntry.innerHTML = `<span class="text-gray-600">[${new Date().toLocaleTimeString()}]</span> Node Pulse: OK | CPU: ${data.cpu}%`;
-            const term = document.getElementById('terminal');
-            term.appendChild(logEntry);
-            term.scrollTop = term.scrollHeight;
-        });
+        async function init() {
+            const status = await fetch('/api/status').then(r => r.json());
+            document.getElementById('bot-name').value = status.botName;
+            document.getElementById('bot-prefix').value = status.prefix;
+            document.getElementById('owner-num').innerText = status.owner;
+            document.getElementById('bot-image').value = status.thumbnail;
 
-        // Load Status (Tab 1)
-        async function loadStatus() {
-            const res = await fetch('/api/status');
-            const data = await res.json();
-            document.getElementById('headerBotName').innerText = data.botName;
-            document.getElementById('inputName').value = data.botName;
-            document.getElementById('inputPrefix').value = data.prefix;
-            document.getElementById('inputImage').value = data.thumbnail;
-            document.getElementById('statOwner').innerText = '+' + data.owner;
-            document.getElementById('statModules').innerText = data.uniqueModules;
-            
-            const start = Date.now();
-            fetch('/api/status').then(() => {
-                document.getElementById('statPing').innerText = (Date.now() - start) + ' ms';
-            });
-        }
-
-        async function updateSettings() {
-            const name = document.getElementById('inputName').value;
-            const prefix = document.getElementById('inputPrefix').value;
-            const thumbnail = document.getElementById('inputImage').value;
-
-            await fetch('/api/update-config', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ name, prefix, thumbnail })
-            });
-            alert('Settings updated!');
-            loadStatus();
-        }
-
-        // Tab 2 Features
-        async function loadFeatures() {
-            const res = await fetch('/api/features');
-            const data = await res.json();
-            const list = document.getElementById('featureList');
-            list.innerHTML = '';
-            
-            data.forEach(f => {
-                const item = document.createElement('div');
-                item.className = 'glass p-4 flex items-center justify-between';
-                item.innerHTML = `
+            const features = await fetch('/api/features').then(r => r.json());
+            const list = document.getElementById('feature-list');
+            list.innerHTML = features.map(f => `
+                <div class="glass-card p-4 flex justify-between items-center">
                     <div>
                         <p class="font-bold text-sm">${f.name}</p>
                         <p class="text-[10px] text-gray-500 uppercase">${f.category}</p>
                     </div>
-                    <button onclick="toggleFeature('${f.category}', '${f.id}', ${!f.status})" 
-                        class="px-4 py-2 rounded-lg text-xs font-bold ${f.status ? 'bg-green-600 text-white' : 'bg-white/10 text-gray-400'}">
-                        ${f.status ? 'ON' : 'OFF'}
-                    </button>
-                `;
-                list.appendChild(item);
-            });
+                    <label class="switch">
+                        <input type="checkbox" ${f.status ? 'checked' : ''} onchange="toggleFeature('${f.category}', '${f.id}', this.checked)">
+                        <span class="slider"></span>
+                    </label>
+                </div>
+            `).join('');
+
+            allCommands = await fetch('/api/commands').then(r => r.json());
+            renderCmds(allCommands);
+
+            const stats = await fetch('/api/analytics').then(r => r.json());
+            document.getElementById('total-exec').innerText = stats.totalExecuted;
+            document.getElementById('popular-cmds').innerHTML = stats.mostUsed.map(c => `
+                <div class="flex justify-between text-xs p-2 bg-white/5 rounded-lg">
+                    <span class="text-gray-300">!${c.name}</span>
+                    <span class="font-bold text-[#9747FF]">${c.count} hits</span>
+                </div>
+            `).join('');
+        }
+
+        function renderCmds(cmds) {
+            const list = document.getElementById('command-list');
+            list.innerHTML = cmds.map(c => `
+                <div class="glass-card p-4">
+                    <div class="flex justify-between items-start mb-2">
+                        <span class="text-[#9747FF] font-black">!${c.name}</span>
+                        <span class="text-[8px] bg-white/10 px-2 py-0.5 rounded-full uppercase">${c.category}</span>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mb-2">${c.description}</p>
+                    <p class="text-[8px] text-gray-600 font-mono">Aliases: ${c.aliases.join(', ') || 'None'}</p>
+                </div>
+            `).join('');
+        }
+
+        function searchCmds() {
+            const query = document.getElementById('cmd-search').value.toLowerCase();
+            const filtered = allCommands.filter(c => c.name.includes(query) || c.description.toLowerCase().includes(query));
+            renderCmds(filtered);
         }
 
         async function toggleFeature(category, id, status) {
             await fetch('/api/toggle-feature', {
                 method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
+                headers: {'Content-Type': 'application/json'},
                 body: JSON.stringify({ category, id, status })
             });
-            loadFeatures();
         }
 
-        // Tab 3 Commands
-        async function loadCommands() {
-            const res = await fetch('/api/commands');
-            allCommands = await res.json();
-            renderCommands(allCommands);
-        }
-
-        function renderCommands(cmds) {
-            const cont = document.getElementById('commandContainer');
-            cont.innerHTML = '';
-            cmds.forEach(c => {
-                const card = document.createElement('div');
-                card.className = 'glass p-4 space-y-1';
-                card.innerHTML = `
-                    <div class="flex justify-between">
-                        <h4 class="font-bold text-purple-400">!${c.name}</h4>
-                        <span class="text-[9px] bg-white/5 px-2 py-1 rounded text-gray-500 uppercase">${c.category}</span>
-                    </div>
-                    <p class="text-xs text-gray-300">${c.description}</p>
-                    <p class="text-[9px] text-gray-500 italic">Aliases: ${c.aliases.join(', ') || 'None'}</p>
-                `;
-                cont.appendChild(card);
+        async function updateConfig() {
+            const name = document.getElementById('bot-name').value;
+            const prefix = document.getElementById('bot-prefix').value;
+            const thumbnail = document.getElementById('bot-image').value;
+            await fetch('/api/update-config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name, prefix, thumbnail })
             });
+            alert('Settings saved!');
         }
 
-        function filterCommands() {
-            const q = document.getElementById('searchCmd').value.toLowerCase();
-            const filtered = allCommands.filter(c => 
-                c.name.toLowerCase().includes(q) || 
-                c.description.toLowerCase().includes(q) ||
-                c.category.toLowerCase().includes(q)
-            );
-            renderCommands(filtered);
-        }
+        socket.on('telemetry', data => {
+            const log = document.getElementById('log-stream');
+            const div = document.createElement('div');
+            div.innerText = `[LOG] ${new Date().toLocaleTimeString()} | RAM: ${data.ram}MB | Uptime: ${data.uptime}s`;
+            log.prepend(div);
+            if (log.children.length > 50) log.lastChild.remove();
+        });
 
-        // Tab 4 Analytics
-        async function loadAnalytics() {
-            const res = await fetch('/api/analytics');
-            const data = await res.json();
-            document.getElementById('statTotalUse').innerText = data.totalExecuted;
-            document.getElementById('statFailed').innerText = data.failed;
-
-            const mostUsed = document.getElementById('mostUsedList');
-            mostUsed.innerHTML = '';
-            data.mostUsed.forEach(item => {
-                const row = document.createElement('div');
-                row.className = 'flex items-center justify-between text-xs py-1';
-                row.innerHTML = `<span class="text-gray-400">!${item.name}</span> <span class="font-mono text-purple-400">${item.count} times</span>`;
-                mostUsed.appendChild(row);
-            });
-        }
-
-        // Init
-        lucide.createIcons();
-        loadStatus();
+        init();
     </script>
 </body>
 </html>

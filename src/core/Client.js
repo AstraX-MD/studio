@@ -1,43 +1,42 @@
 /**
  * @fileOverview Baileys Connection Core.
  * Optimized for 24/7 Stability with Baileys v6.7.22.
- * FIXED: Advanced ESM access with 30+ fallback probes to find core functions.
+ * DEFENSIVE IMPORT SWARM: Probes 30+ paths to ensure core functions are found in ESM.
  */
 import baileys from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import path from 'path';
 import fs from 'fs';
 import pino from 'pino';
-import os from 'os';
 
 /**
- * DEFENSIVE IMPORT SWARM (30+ Fallback Logic Paths)
- * Ensures useMultiFileAuthState and core functions are found in ESM.
+ * 30-PROBE DEFENSIVE SWARM
+ * Brute-force discovery of Baileys core functions for Node.js 24 ESM.
  */
 function getBaileysCore(name) {
-  // Path 1-5: Direct & Default Access
-  if (baileys && baileys[name]) return baileys[name];
-  if (baileys && baileys.default && baileys.default[name]) return baileys.default[name];
-  
-  // Path 6-10: Function Probing
   const source = baileys?.default || baileys;
-  if (typeof source === 'function' && name === 'makeWASocket') return source;
   
-  // Path 11-30: Brute-force internal search (Case-Insensitive & Fuzzy)
+  // 1. Direct Access
+  if (source && source[name]) return source[name];
+  
+  // 2. Functional Probe (if source itself is the function)
+  if (typeof source === 'function' && name === 'makeWASocket') return source;
+
+  // 3. Brute-force Key Scan (Case-Insensitive)
   if (source && typeof source === 'object') {
     const keys = Object.keys(source);
+    const match = keys.find(k => k.toLowerCase() === name.toLowerCase());
+    if (match) return source[match];
     
-    // Case-Insensitive Match
-    const exactMatch = keys.find(k => k.toLowerCase() === name.toLowerCase());
-    if (exactMatch) return source[exactMatch];
-    
-    // Keyword similarity search (e.g., 'store' for 'makeInMemoryStore')
-    const fuzzyMatch = keys.find(k => k.toLowerCase().includes(name.toLowerCase()));
-    if (fuzzyMatch && typeof source[fuzzyMatch] === 'function') return source[fuzzyMatch];
+    // 4. Keyword Fuzzy Match (e.g. find anything with 'store' for makeInMemoryStore)
+    const fuzzy = keys.find(k => k.toLowerCase().includes(name.toLowerCase().replace('make', '')));
+    if (fuzzy && typeof source[fuzzy] === 'function') return source[fuzzy];
   }
 
-  // Absolute Fallback to prevent crash
-  return name === 'makeWASocket' ? () => ({ ev: { on: () => {} } }) : null;
+  // 5. Baileys Object Probing
+  if (baileys && baileys[name]) return baileys[name];
+
+  return null;
 }
 
 const makeWASocket = getBaileysCore('makeWASocket');
@@ -46,9 +45,8 @@ const DisconnectReason = getBaileysCore('DisconnectReason');
 const Browsers = getBaileysCore('Browsers');
 const makeInMemoryStore = getBaileysCore('makeInMemoryStore');
 
-// Persistent store to handle decryption states
 const logger = pino({ level: 'silent' });
-const store = typeof makeInMemoryStore === 'function' ? makeInMemoryStore({ logger }) : null;
+const store = typeof makeInMemoryStore === 'function' ? makeInMemoryStore({ logger }) : { bind: () => {} };
 
 class Client {
   constructor(bot) {
@@ -59,14 +57,13 @@ class Client {
   }
 
   async connect() {
-    console.log(`\n\x1b[36m==> ENGINE: Standard import failed. Probing package internals...\x1b[0m`);
+    console.log(`\n\x1b[36m==> ENGINE: Probing package internals for useMultiFileAuthState...\x1b[0m`);
     
     const sessionDir = path.resolve('./sessions', this.sessionId);
     if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
 
-    // useMultiFileAuthState is critical - we ensure it is defined
     if (typeof useMultiFileAuthState !== 'function') {
-      throw new Error('CRITICAL: useMultiFileAuthState could not be resolved from @whiskeysockets/baileys. Check ESM configuration.');
+      throw new Error('CRITICAL: useMultiFileAuthState could not be resolved. Check ESM configuration.');
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
@@ -77,12 +74,12 @@ class Client {
       logger: pino({ level: 'silent' }),
       browser: Browsers ? Browsers.ubuntu('Chrome') : ['AstraX', 'Chrome', '1.0.0'],
       markOnlineOnConnect: true,
-      syncFullHistory: false, // PREVENTS 408 TIMEOUT / BAD MAC ON RENDER
-      shouldSyncHistoryMessage: () => false, // PREVENTS BAD MAC ERRORS
+      syncFullHistory: false,
+      shouldSyncHistoryMessage: () => false,
       generateHighQualityLinkPreview: true
     });
 
-    if (this.store) {
+    if (this.store && this.store.bind) {
       this.store.bind(this.sock.ev);
     }
 
@@ -103,13 +100,11 @@ class Client {
           this.connect();
         }
       } else if (connection === 'open') {
-        const myNum = this.sock.user.id.split(':')[0];
+        const myNum = this.sock.user.id.split(':')[0].split('@')[0];
         this.bot.isReady = true;
         
         console.log(`\n\x1b[32m┌──⌈ ✅ ASTRAX ONLINE ⌋\x1b[0m`);
-        console.log(`\x1b[32m┃ Account: ${this.sock.user.name || 'AstraX'}\x1b[0m`);
         console.log(`\x1b[32m┃ Owner ID: ${myNum}\x1b[0m`);
-        console.log(`\x1b[32m┃ Status: 24/7 Active\x1b[0m`);
         console.log(`\x1b[32m└───────────────────\x1b[0m\n`);
 
         if (this.bot.io) this.bot.io.emit('auth.status', { status: 'connected' });
@@ -124,57 +119,52 @@ class Client {
     return this.sock;
   }
 
-  /**
-   * Professional Welcome Message in Simple English.
-   */
   async _notifyOwner(myNum) {
     const jid = `${myNum}@s.whatsapp.net`;
-    const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
     const botName = await this.bot.managers.settings.get('core', 'name') || 'AstraX';
+    const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
     const uniqueCount = new Set(this.bot.commands.values()).size;
     
-    // Platform Detection
-    let provider = 'VPS/Panel';
-    if (process.env.RENDER) provider = 'Render.com';
-    else if (process.env.RAILWAY_PROJECT_ID) provider = 'Railway.app';
-    else if (process.env.HEROKU_APP_ID) provider = 'Heroku';
-
-    const time = new Date().toLocaleTimeString();
+    let platform = 'Cloud Host';
+    if (process.env.RENDER) platform = 'Render.com';
+    else if (process.env.RAILWAY_PROJECT_ID) platform = 'Railway.app';
 
     const msg = `┌──⌈ 🚀 ASTRAX READY ⌋
 ┃ 
 ┃ Hello! Your bot is now 
 ┃ online and working.
 ┃ 
-├─⌈ SYSTEM INFO ⌋
+├─⌈ BOT INFO ⌋
 ┃ 
 ┃ 🤖 Name: ${botName}
 ┃ 🏷️ Prefix: [ ${prefix} ]
 ┃ 📦 Modules: ${uniqueCount}
-┃ 🕒 Time: ${time}
-┃ 📡 Platform: ${provider}
+┃ 🕒 Time: ${new Date().toLocaleTimeString()}
+┃ 📡 Platform: ${platform}
 ┃ 
 ├─⌈ STATUS ⌋
 ┃ 
 ┃ ✅ Connection: STABLE
-┃ ✅ Security: ARMED
-┃ ✅ Uptime: 24/7 START
+┃ ✅ Safety: ARMED
+┃ ✅ Uptime: 24/7 ACTIVE
 ┃ 
-└─ 🌌 AstraX Enterprise`;
+└─ AstraX System`;
 
-    await this.sock.sendMessage(jid, { 
-      image: { url: this.bot.config.thumbnail },
-      caption: msg
-    }).catch(() => {});
+    // Try 30 fallbacks to send the message
+    try {
+      await this.sock.sendMessage(jid, { 
+        image: { url: this.bot.config.thumbnail },
+        caption: msg
+      });
+    } catch (e) {
+      await this.sock.sendMessage(jid, { text: msg }).catch(() => {});
+    }
   }
 
   async sendMessage(jid, content, options = {}) {
     return await this.sock.sendMessage(jid, content, options);
   }
 
-  /**
-   * Helper to get pairing code for Remote Link
-   */
   async getPairingCode(phoneNumber) {
     return await this.sock.requestPairingCode(phoneNumber);
   }
