@@ -146,7 +146,7 @@ async function start() {
     console.log(`\n\x1b[36m┌──⌈ 🌌 ASTRAX ⌋\x1b[0m`);
     console.log(`\x1b[36m┃ Console: Live on port ${PORT}\x1b[0m`);
     console.log(`\x1b[36m┃ Status: Active\x1b[0m`);
-    console.log(`\x1b[36m└─────────────────────────\x1b[0m\n`);
+    console.log(`\x1b[36m└─────────────────────────\n`);
   });
 
   try {
