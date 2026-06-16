@@ -12,9 +12,7 @@ export default {
   cooldown: 15,
   permissions: 1,
   execute: async (ctx, args) => {
-    const botName = ctx.bot.config.name;
     const query = args.join(' ');
-
     if (!query) return ctx.reply(`┌──⌈ ⚠️ ERROR ⌋\n┃ Provide a song name.\n└────────────────`);
 
     const { key } = await ctx.reply(`┌──⌈ 🔍 SEARCHING ⌋\n┃ Query: ${query}\n┃ Status: Querying Swarm...\n└────────────────`);
@@ -45,7 +43,7 @@ export default {
 
     for (const url of fallbacks) {
       try {
-        const res = await axios.get(url);
+        const res = await axios.get(url, { timeout: 8000 });
         const data = res.data.data || res.data.result || res.data;
         const audioUrl = data.url || data.link || data.download || (data.results && data.results[0]?.url);
 
@@ -55,8 +53,7 @@ export default {
           await ctx.sock.sendMessage(ctx.jid, { 
             audio: { url: audioUrl },
             mimetype: 'audio/mp4',
-            ptt: false,
-            contextInfo: ctx.contextInfo
+            ptt: false
           }, { quoted: ctx.m });
           
           return;

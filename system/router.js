@@ -1,6 +1,6 @@
 /**
  * AstraX - system/router.js
- * Elite Message Routing with Warden Security, Chatbot, and Compatibility Layer.
+ * Elite Message Routing with Warden Security and Autonomous Agent.
  */
 
 import { db } from './db.js'
@@ -8,27 +8,6 @@ import { logger } from './logger.js'
 import { fonts } from './fonts.js'
 import sharp from 'sharp'
 import { aiAgentProcess } from '../src/ai/flows/ai-agent-flow.js'
-
-// ─────────────────────────────────────────────
-// 5 WAYS API LOADER — NEVER EXIT ON FAIL
-// ─────────────────────────────────────────────
-let api = null
-async function loadApi() {
-  const paths = ['./api.js', './api.js?t=' + Date.now(), './api', '../system/api.js', '/opt/render/project/src/system/api.js']
-  for (const path of paths) {
-    try {
-      const mod = await import(path)
-      api = mod.api
-      if (api) return logger.success('ROUTER', `API loaded via: ${path}`)
-    } catch (e) {}
-  }
-  logger.warn('ROUTER', 'API not available - using fallback')
-  api = {
-    getSession: () => 'astra-fallback-' + Date.now(),
-    ai: { groq: async () => ({ success: false, error: 'API unavailable' }) }
-  }
-}
-await loadApi()
 
 let commands = new Map()
 let observers = new Map()
@@ -89,26 +68,23 @@ async function getChannelContext(sock, m) {
 async function wardenCheck(sock, m, body, isGroup, from, sender) {
   if (!isGroup) return false
   const jid = from
-  const metadata = await sock.groupMetadata(jid)
-  const isSenderAdmin = metadata.participants.find(p => p.id === sender)?.admin
-  if (isSenderAdmin) return false
+  
+  // Skip if sender is owner (Number-based check)
+  const owner = await db.get('owner')
+  if (sender.includes(owner)) return false
 
   // Anti-Link
-  const antilink = await db.get(`antilink:${jid}`)
-  if (antilink?.mode === 'on' && (body.includes('chat.whatsapp.com') || body.includes('wa.me/'))) {
+  const al = await db.get(`antilink:${jid}`)
+  if (al?.mode === 'on' && (body.includes('chat.whatsapp.com') || body.includes('wa.me/'))) {
     await sock.sendMessage(from, { delete: m.key })
-    if (antilink.action === 'kick') await sock.groupParticipantsUpdate(from, [sender], 'remove')
     return true
   }
 
   // Anti-Badword
-  const antiword = await db.get(`antiword:${jid}`)
-  if (antiword?.mode === 'on') {
-    const hasBadWord = antiword.words.some(word => body.toLowerCase().includes(word))
-    if (hasBadWord) {
-      await sock.sendMessage(from, { delete: m.key })
-      return true
-    }
+  const aw = await db.get(`antiword:${jid}`)
+  if (aw?.mode === 'on') {
+    const hasBadWord = aw.words.some(word => body.toLowerCase().includes(word))
+    if (hasBadWord) return await sock.sendMessage(from, { delete: m.key })
   }
 
   // Media Antis
@@ -123,6 +99,12 @@ async function wardenCheck(sock, m, body, isGroup, from, sender) {
   if (m.message.videoMessage) {
     const av = await db.get(`antivideo:${jid}`)
     if (av?.mode === 'on') return await sock.sendMessage(from, { delete: m.key })
+  }
+  
+  // Anti-Emoji
+  if (body.match(/[\p{Emoji}]/u)) {
+    const ae = await db.get(`antiemoji:${jid}`)
+    if (ae?.mode === 'on') return await sock.sendMessage(from, { delete: m.key })
   }
 
   return false
@@ -175,7 +157,7 @@ export async function routeMessage(sock, m) {
           get: async (cat, key, j) => await db.get(key) || await db.get(`${cat}:${key}`) || await db.get(`${key}:${j}`),
           set: async (cat, key, val, j) => await db.set(key, val)
         },
-        roles: { getRole: async (u, g) => 10 },
+        roles: { getRole: async (u, g) => (u.includes(await db.get('owner')) ? 10 : 1) },
         memory: { add: () => {}, get: () => [] }
       },
       commands, config: { name: await db.get('botname') || 'AstraX', thumbnail: await db.get('botimage') }

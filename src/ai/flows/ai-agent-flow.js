@@ -1,6 +1,5 @@
 /**
- * @fileOverview AstraX Autonomous AI Agent Flow.
- * Converted to .js for standard Node.js runtime compatibility.
+ * @fileOverview AstraX Autonomous AI Agent Flow with 20+ Fallbacks.
  */
 import axios from 'axios';
 
@@ -16,19 +15,14 @@ You manage a professional WhatsApp bot.
 User Identity: ${input.context.pushName} (@${input.context.sender.split('@')[0]})
 Environment: ${input.context.isGroup ? 'Group Chat' : 'Private DM'}
 
-AVAILABLE COMMANDS:
-${JSON.stringify(input.commands, null, 2)}
-
 INSTRUCTIONS:
-1. Analyze the user's message.
-2. If the user wants to perform a task that matches an available command (e.g., play music, search wiki, ban user, flip coin), you MUST return a structured command call.
-3. If no command is relevant, engage in a helpful, context-aware conversation.
-4. Use the provided history for continuity.
+1. Engage in a helpful, context-aware conversation.
+2. Provide concise and relevant responses.
+3. Use the provided history for continuity.
 
 OUTPUT FORMAT (JSON ONLY):
 {
-  "response": "Brief acknowledgment of the action or helpful reply",
-  "executeCommand": { "name": "command_name", "args": ["arg1", "arg2"] } // Optional
+  "response": "Brief acknowledgment of the action or helpful reply"
 }`;
 
   try {
@@ -39,7 +33,7 @@ OUTPUT FORMAT (JSON ONLY):
         messages: [
           { role: 'system', content: systemPrompt },
           ...input.history.map(h => ({ role: h.role, content: h.content })),
-          { role: 'user', content: input.message + (input.context.quotedText ? ` [Replied to: ${input.context.quotedText}]` : '') }
+          { role: 'user', content: input.message }
         ],
         response_format: { type: "json_object" }
       },
@@ -48,33 +42,48 @@ OUTPUT FORMAT (JSON ONLY):
           'Authorization': `Bearer ${apiKey}`,
           'Content-Type': 'application/json',
         },
+        timeout: 5000
       }
     );
 
     const result = JSON.parse(response.data.choices[0]?.message?.content || '{}');
-    return {
-      response: result.response || "Task processed.",
-      executeCommand: result.executeCommand
-    };
+    return { response: result.response || "Task processed." };
   } catch (error) {
-    console.error('Groq Agent Error:', error);
     return null;
   }
 }
 
 /**
- * Universal Zero-Key Fallback (Basic Chat).
+ * Universal 20+ Fallback AI Swarm.
  */
-async function fallbackChat(message) {
+async function fallbackSwarm(message) {
   const urls = [
     `https://api.agatz.xyz/api/smart_ai?message=${encodeURIComponent(message)}`,
-    `https://api.vytmp3.com/ai?query=${encodeURIComponent(message)}`
+    `https://api.vytmp3.com/ai?query=${encodeURIComponent(message)}`,
+    `https://api.dlow.xyz/api/gpt4?q=${encodeURIComponent(message)}`,
+    `https://api.zahwazein.xyz/api/ai/gpt4?text=${encodeURIComponent(message)}`,
+    `https://api.xyter.com/gpt4?q=${encodeURIComponent(message)}`,
+    `https://api.miftah.xyz/api/ai/gpt4?q=${encodeURIComponent(message)}`,
+    `https://api.caliph.biz.id/api/ai/gpt4?q=${encodeURIComponent(message)}`,
+    `https://api.paxsenix.biz.id/api/ai/gpt4?q=${encodeURIComponent(message)}`,
+    `https://api.yanzbotz.my.id/api/ai/gpt4?q=${encodeURIComponent(message)}`,
+    `https://api.erdwpe.my.id/api/ai/gpt4?q=${encodeURIComponent(message)}`,
+    `https://api.agatz.xyz/api/blackbox?message=${encodeURIComponent(message)}`,
+    `https://api.vytmp3.com/gemini?query=${encodeURIComponent(message)}`,
+    `https://api.dlow.xyz/api/gemini?q=${encodeURIComponent(message)}`,
+    `https://api.zahwazein.xyz/api/ai/gemini?text=${encodeURIComponent(message)}`,
+    `https://api.agatz.xyz/api/deepseek?message=${encodeURIComponent(message)}`,
+    `https://api.agatz.xyz/api/mistral?message=${encodeURIComponent(message)}`,
+    `https://api.agatz.xyz/api/llama?message=${encodeURIComponent(message)}`,
+    `https://api.agatz.xyz/api/qwen?message=${encodeURIComponent(message)}`,
+    `https://api.agatz.xyz/api/claude?message=${encodeURIComponent(message)}`,
+    `https://api.vytmp3.com/claude?query=${encodeURIComponent(message)}`
   ];
 
   for (const url of urls) {
     try {
-      const res = await axios.get(url);
-      const ans = res.data.data || res.data.result || res.data.ans;
+      const res = await axios.get(url, { timeout: 3000 });
+      const ans = res.data.data || res.data.result || res.data.ans || res.data.content;
       if (ans) return { response: ans };
     } catch (e) { continue; }
   }
@@ -82,10 +91,10 @@ async function fallbackChat(message) {
 }
 
 export async function aiAgentProcess(input) {
-  // 1. Attempt High-Performance Groq Agent
+  // 1. Try Groq First
   const groqResult = await groqAgentReasoning(input);
   if (groqResult) return groqResult;
 
-  // 2. Absolute Fallback (Text-Only)
-  return await fallbackChat(input.message);
+  // 2. Swarm through 20+ Fallbacks
+  return await fallbackSwarm(input.message);
 }
