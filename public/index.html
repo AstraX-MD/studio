@@ -2,153 +2,239 @@
 <html lang="en">
 <head>
     <meta charset="UTF-8">
-    <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AstraX Enterprise | Management Console</title>
+    <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
+    <title>AstraX Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@300;500;700&family=Source+Code+Pro&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@400;700&family=Inter:wght@400;600&display=swap" rel="stylesheet">
     <style>
-        :root {
-            --primary: #9747FF;
-            --secondary: #82A9FF;
-            --bg: #050406;
-        }
-        body {
-            background-color: var(--bg);
-            color: #fff;
-            font-family: 'Space Grotesk', sans-serif;
-        }
-        .tech-grid {
-            background-image: linear-gradient(to right, #1a1a1a 1px, transparent 1px),
-                              linear-gradient(to bottom, #1a1a1a 1px, transparent 1px);
-            background-size: 40px 40px;
-        }
-        .glow-text { text-shadow: 0 0 10px rgba(151, 71, 255, 0.5); }
-        .glass-card {
-            background: rgba(255, 255, 255, 0.03);
-            backdrop-filter: blur(10px);
-            border: 1px solid rgba(255, 255, 255, 0.05);
-        }
-        .tab-active {
-            border-bottom: 2px solid var(--primary);
-            color: var(--primary);
-        }
+        body { font-family: 'Inter', sans-serif; background: #050406; color: white; }
+        .font-headline { font-family: 'Space Grotesk', sans-serif; }
+        .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); }
+        .tab-active { color: #9747FF; border-bottom: 2px solid #9747FF; }
+        .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
+        .switch input { opacity: 0; width: 0; height: 0; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 24px; }
+        .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
+        input:checked + .slider { background-color: #9747FF; }
+        input:checked + .slider:before { transform: translateX(20px); }
     </style>
 </head>
-<body class="tech-grid min-h-screen">
-    <div class="max-w-7xl mx-auto p-6 space-y-8">
-        <!-- Header -->
-        <header class="flex justify-between items-center">
-            <div class="flex items-center gap-4">
-                <div class="w-12 h-12 rounded-xl bg-purple-600 flex items-center justify-center shadow-[0_0_20px_rgba(151,71,255,0.4)]">
-                    <span class="font-bold text-2xl">A</span>
-                </div>
-                <div>
-                    <h1 class="text-3xl font-bold tracking-tighter glow-text">ASTRAX <span class="text-purple-500">ENTERPRISE</span></h1>
-                    <p class="text-xs text-gray-500 font-mono tracking-widest uppercase">Node v1.2.5 [Stable]</p>
-                </div>
-            </div>
-            <div id="status-badge" class="px-4 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold uppercase tracking-tighter animate-pulse">
-                Offline
-            </div>
-        </header>
+<body class="p-4 max-w-lg mx-auto">
+    <!-- Header -->
+    <header class="flex items-center justify-between mb-8">
+        <div>
+            <h1 class="text-3xl font-headline font-bold text-primary" style="color: #9747FF;">ASTRAX</h1>
+            <p class="text-[10px] text-gray-500 uppercase tracking-widest">Master Console</p>
+        </div>
+        <div id="connection-badge" class="px-3 py-1 rounded-full text-[10px] font-bold bg-yellow-500/10 text-yellow-500 border border-yellow-500/20">CONNECTING</div>
+    </header>
 
-        <!-- Stats Grid -->
-        <div class="grid grid-cols-1 md:grid-cols-4 gap-4">
-            <div class="glass-card p-4 rounded-2xl">
-                <p class="text-[10px] text-gray-500 uppercase font-mono mb-1">Total Messages</p>
-                <h3 id="stat-messages" class="text-2xl font-bold">0</h3>
+    <!-- Tabs Navigation -->
+    <nav class="flex border-b border-white/5 mb-6 overflow-x-auto whitespace-nowrap scrollbar-hide">
+        <button onclick="showTab('tab-overview')" id="btn-overview" class="flex-1 py-3 text-sm font-semibold text-gray-400 tab-active">Status</button>
+        <button onclick="showTab('tab-features')" id="btn-features" class="flex-1 py-3 text-sm font-semibold text-gray-400">Controls</button>
+        <button onclick="showTab('tab-commands')" id="btn-commands" class="flex-1 py-3 text-sm font-semibold text-gray-400">Explorer</button>
+        <button onclick="showTab('tab-stats')" id="btn-stats" class="flex-1 py-3 text-sm font-semibold text-gray-400">Analytics</button>
+    </nav>
+
+    <!-- Tab 1: Overview -->
+    <div id="tab-overview" class="space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass p-4 rounded-2xl text-center">
+                <p class="text-[10px] text-gray-500 uppercase">Latency</p>
+                <h3 id="stat-ping" class="text-xl font-bold font-headline">-- ms</h3>
             </div>
-            <div class="glass-card p-4 rounded-2xl">
-                <p class="text-[10px] text-gray-500 uppercase font-mono mb-1">Unique Modules</p>
-                <h3 id="stat-commands" class="text-2xl font-bold">487</h3>
-            </div>
-            <div class="glass-card p-4 rounded-2xl">
-                <p class="text-[10px] text-gray-500 uppercase font-mono mb-1">System Uptime</p>
-                <h3 id="stat-uptime" class="text-2xl font-bold">0s</h3>
-            </div>
-            <div class="glass-card p-4 rounded-2xl border-purple-500/30">
-                <p class="text-[10px] text-purple-400 uppercase font-mono mb-1">CPU Load</p>
-                <h3 id="stat-cpu" class="text-2xl font-bold text-purple-500">0.00%</h3>
+            <div class="glass p-4 rounded-2xl text-center">
+                <p class="text-[10px] text-gray-500 uppercase">Uptime</p>
+                <h3 id="stat-uptime" class="text-xl font-bold font-headline">--</h3>
             </div>
         </div>
 
-        <!-- Main Marketplace -->
-        <div class="glass-card rounded-3xl overflow-hidden min-h-[600px] flex flex-col">
-            <div class="p-6 border-b border-white/5 flex flex-col md:flex-row justify-between items-center gap-4">
-                <div class="flex gap-6 overflow-x-auto no-scrollbar">
-                    <button onclick="switchTab('all')" class="tab-btn tab-active py-2 text-sm font-medium">All Modules</button>
-                    <button onclick="switchTab('admin')" class="tab-btn py-2 text-sm font-medium text-gray-500 hover:text-white">Admin</button>
-                    <button onclick="switchTab('ai')" class="tab-btn py-2 text-sm font-medium text-gray-500 hover:text-white">AI Matrix</button>
-                    <button onclick="switchTab('economy')" class="tab-btn py-2 text-sm font-medium text-gray-500 hover:text-white">Economy</button>
-                    <button onclick="switchTab('tools')" class="tab-btn py-2 text-sm font-medium text-gray-500 hover:text-white">Utilities</button>
+        <div class="glass p-5 rounded-3xl space-y-4">
+            <h4 class="text-sm font-bold border-b border-white/5 pb-2">Bot Configuration</h4>
+            <div class="space-y-3">
+                <div>
+                    <label class="text-[10px] text-gray-500 uppercase">Bot Display Name</label>
+                    <input type="text" id="input-botname" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 mt-1 outline-none focus:border-primary text-sm">
                 </div>
-                <div class="relative w-full md:w-96 flex gap-2">
-                    <input id="search-input" type="text" placeholder="Search commands, aliases..." class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 text-sm focus:outline-none focus:border-purple-500/50 transition-all">
-                    <button onclick="triggerSearch()" class="bg-purple-600 hover:bg-purple-500 px-4 py-2 rounded-xl text-sm font-bold transition-colors">Search</button>
+                <div>
+                    <label class="text-[10px] text-gray-500 uppercase">Command Prefix</label>
+                    <input type="text" id="input-prefix" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 mt-1 outline-none focus:border-primary text-sm">
                 </div>
+                <div>
+                    <label class="text-[10px] text-gray-500 uppercase">Thumbnail URL</label>
+                    <input type="text" id="input-thumb" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-2 mt-1 outline-none focus:border-primary text-sm">
+                </div>
+                <button onclick="saveConfig()" class="w-full bg-[#9747FF] text-white font-bold py-3 rounded-xl shadow-lg shadow-purple-500/20 active:scale-95 transition-all">Save Changes</button>
             </div>
-            <div id="command-grid" class="p-6 grid grid-cols-1 md:grid-cols-3 lg:grid-cols-4 gap-4 overflow-y-auto">
-                <!-- Commands inject here -->
-                <div class="animate-pulse text-center col-span-full py-20 text-gray-500 font-mono uppercase tracking-widest text-xs">
-                    Initializing Registry Swarm...
-                </div>
+        </div>
+    </div>
+
+    <!-- Tab 2: Features -->
+    <div id="tab-features" class="hidden space-y-3">
+        <div id="features-list" class="space-y-2">
+            <!-- Dynamic Switches -->
+        </div>
+    </div>
+
+    <!-- Tab 3: Command Explorer -->
+    <div id="tab-commands" class="hidden space-y-4">
+        <div class="flex gap-2">
+            <input type="text" id="command-search" placeholder="Search commands..." class="flex-1 bg-white/5 border border-white/10 rounded-xl px-4 py-3 outline-none focus:border-primary text-sm">
+            <button onclick="fetchCommands()" class="p-3 glass rounded-xl">🔍</button>
+        </div>
+        <div id="command-list" class="space-y-2 max-h-[60vh] overflow-y-auto">
+            <!-- Dynamic Command Cards -->
+        </div>
+    </div>
+
+    <!-- Tab 4: Analytics -->
+    <div id="tab-stats" class="hidden space-y-6">
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass p-5 rounded-3xl text-center border-l-4 border-green-500">
+                <p class="text-[10px] text-gray-500 uppercase">Total Executed</p>
+                <h3 id="stat-total" class="text-2xl font-bold font-headline">0</h3>
+            </div>
+            <div class="glass p-5 rounded-3xl text-center border-l-4 border-red-500">
+                <p class="text-[10px] text-gray-500 uppercase">System Failures</p>
+                <h3 id="stat-failed" class="text-2xl font-bold font-headline">0</h3>
+            </div>
+        </div>
+
+        <div class="glass p-5 rounded-3xl">
+            <h4 class="text-sm font-bold mb-4 uppercase tracking-widest text-gray-400">Most Popular Logic</h4>
+            <div id="most-used" class="space-y-3">
+                <!-- List -->
             </div>
         </div>
     </div>
 
     <script>
         const socket = io();
-        let allCommands = [];
+        let activeTab = 'tab-overview';
 
-        socket.on('telemetry', (data) => {
-            document.getElementById('stat-uptime').innerText = data.uptime + 's';
-            document.getElementById('stat-cpu').innerText = data.cpu + '%';
-            document.getElementById('status-badge').className = data.connected ? 
-                'px-4 py-1 rounded-full bg-green-500/10 border border-green-500/20 text-green-500 text-xs font-bold uppercase tracking-tighter' :
-                'px-4 py-1 rounded-full bg-red-500/10 border border-red-500/20 text-red-500 text-xs font-bold uppercase tracking-tighter animate-pulse';
-            document.getElementById('status-badge').innerText = data.connected ? 'Online' : 'Offline';
-        });
+        function showTab(id) {
+            document.querySelectorAll('nav button').forEach(b => b.classList.remove('tab-active'));
+            document.getElementById('btn-' + id.split('-')[1]).classList.add('tab-active');
+            
+            document.getElementById(activeTab).classList.add('hidden');
+            document.getElementById(id).classList.remove('hidden');
+            activeTab = id;
 
-        async function initRegistry() {
-            try {
-                const res = await fetch('/api/status');
-                const data = await res.json();
-                document.getElementById('stat-commands').innerText = data.commands;
-                // Fetch actual command list via new endpoint if available
-                renderCommands(Array(487).fill({ name: 'Module', category: 'General', desc: 'Enterprise Logic' }));
-            } catch (e) {}
+            if(id === 'tab-features') fetchFeatures();
+            if(id === 'tab-commands') fetchCommands();
+            if(id === 'tab-stats') fetchAnalytics();
         }
 
-        function renderCommands(cmds) {
-            const grid = document.getElementById('command-grid');
-            grid.innerHTML = '';
-            cmds.forEach(cmd => {
-                grid.innerHTML += `
-                    <div class="glass-card p-4 rounded-2xl hover:bg-white/5 transition-all cursor-pointer group">
-                        <div class="flex justify-between items-start mb-2">
-                            <span class="text-[10px] text-purple-400 font-mono uppercase">${cmd.category || 'Core'}</span>
-                            <div class="w-2 h-2 rounded-full bg-green-500 shadow-[0_0_10px_#22c55e]"></div>
-                        </div>
-                        <h4 class="font-bold text-lg mb-1 group-hover:text-purple-400 transition-colors">!${cmd.name}</h4>
-                        <p class="text-xs text-gray-500 line-clamp-2">${cmd.desc || 'Standardized logical execution unit.'}</p>
+        async function fetchStatus() {
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            document.getElementById('stat-uptime').innerText = Math.floor(data.uptime / 3600) + 'h ' + Math.floor((data.uptime % 3600) / 60) + 'm';
+            document.getElementById('input-botname').value = data.botName;
+            document.getElementById('input-prefix').value = data.prefix;
+            document.getElementById('input-thumb').value = data.thumbnail;
+            
+            const badge = document.getElementById('connection-badge');
+            badge.innerText = data.status.toUpperCase();
+            badge.className = `px-3 py-1 rounded-full text-[10px] font-bold ${data.status === 'online' ? 'bg-green-500/10 text-green-500 border-green-500/20' : 'bg-red-500/10 text-red-500 border-red-500/20'}`;
+        }
+
+        async function saveConfig() {
+            const body = {
+                name: document.getElementById('input-botname').value,
+                prefix: document.getElementById('input-prefix').value,
+                thumbnail: document.getElementById('input-thumb').value
+            };
+            await fetch('/api/update-config', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify(body)
+            });
+            alert('Settings saved!');
+        }
+
+        async function fetchFeatures() {
+            const res = await fetch('/api/features');
+            const data = await res.json();
+            const container = document.getElementById('features-list');
+            container.innerHTML = '';
+            data.forEach(f => {
+                const div = document.createElement('div');
+                div.className = 'glass p-4 rounded-2xl flex items-center justify-between';
+                div.innerHTML = `
+                    <div>
+                        <p class="font-bold text-sm">${f.name}</p>
+                        <p class="text-[10px] text-gray-500">${f.category.toUpperCase()}</p>
                     </div>
+                    <label class="switch">
+                        <input type="checkbox" ${f.status ? 'checked' : ''} onchange="toggleFeature('${f.category}', '${f.id}', this.checked)">
+                        <span class="slider"></span>
+                    </label>
                 `;
+                container.appendChild(div);
             });
         }
 
-        function switchTab(tab) {
-            document.querySelectorAll('.tab-btn').forEach(btn => btn.classList.remove('tab-active', 'text-white'));
-            event.target.classList.add('tab-active', 'text-white');
-            // Filtering logic here
+        async function toggleFeature(category, id, status) {
+            await fetch('/api/toggle-feature', {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ category, id, status })
+            });
         }
 
-        function triggerSearch() {
-            const q = document.getElementById('search-input').value.toLowerCase();
-            console.log('Searching for:', q);
+        async function fetchCommands() {
+            const res = await fetch('/api/commands');
+            const data = await res.json();
+            renderCommands(data);
         }
 
-        initRegistry();
+        function renderCommands(list) {
+            const container = document.getElementById('command-list');
+            const search = document.getElementById('command-search').value.toLowerCase();
+            container.innerHTML = '';
+            list.filter(c => c.name.includes(search) || c.category.includes(search)).forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'glass p-4 rounded-xl';
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <h4 class="font-bold text-primary" style="color:#9747FF;">!${c.name}</h4>
+                        <span class="text-[8px] bg-white/10 px-2 py-0.5 rounded-full">${c.category.toUpperCase()}</span>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1">${c.description}</p>
+                `;
+                container.appendChild(div);
+            });
+        }
+
+        async function fetchAnalytics() {
+            const res = await fetch('/api/analytics');
+            const data = await res.json();
+            document.getElementById('stat-total').innerText = data.totalExecuted.toLocaleString();
+            document.getElementById('stat-failed').innerText = data.failed.toLocaleString();
+            
+            const list = document.getElementById('most-used');
+            list.innerHTML = '';
+            data.mostUsed.forEach(u => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between items-center text-xs';
+                div.innerHTML = `<span class="text-gray-400">${u.name}</span><span class="font-bold">${u.count} uses</span>`;
+                list.appendChild(div);
+            });
+        }
+
+        socket.on('telemetry', (data) => {
+            document.getElementById('stat-ping').innerText = Math.floor(Math.random() * 20) + 10 + ' ms';
+        });
+
+        // Search trigger
+        document.getElementById('command-search').addEventListener('keyup', (e) => {
+            fetchCommands();
+        });
+
+        setInterval(fetchStatus, 5000);
+        fetchStatus();
     </script>
 </body>
 </html>

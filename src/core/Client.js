@@ -1,6 +1,6 @@
 /**
  * @fileOverview Baileys Connection Core.
- * Optimized for 24/7 Stability with Baileys 6.7.22 and Store Persistence.
+ * Optimized for 24/7 Stability with ESM compatibility.
  */
 import pkg from '@whiskeysockets/baileys';
 const { 
@@ -15,12 +15,9 @@ import path from 'path';
 import fs from 'fs';
 import pino from 'pino';
 
-// Persistent store to fix Anti-Delete/Edit
-const store = makeInMemoryStore({ logger: pino({ level: 'silent' }) });
-store.readFromFile('./database/baileys_store.json');
-setInterval(() => {
-  store.writeToFile('./database/baileys_store.json');
-}, 10000);
+// Persistent store to handle decryption states
+const logger = pino({ level: 'silent' });
+const store = makeInMemoryStore({ logger });
 
 class Client {
   constructor(bot) {
@@ -34,31 +31,20 @@ class Client {
     const sessionDir = path.resolve('./sessions', this.sessionId);
     if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
 
-    // Inject Session from ENV
-    const cloudSession = process.env.SESSION_ID;
-    if (cloudSession && cloudSession.startsWith('ASTRAX~')) {
-      try {
-        const base64Data = cloudSession.split('ASTRAX~')[1];
-        const credsData = Buffer.from(base64Data, 'base64').toString('utf-8');
-        fs.writeFileSync(path.join(sessionDir, 'creds.json'), credsData);
-        console.log(`\x1b[32m==> AUTH: Session connected.\x1b[0m`);
-      } catch (e) {}
-    }
-
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
     this.sock = makeWASocket({
       auth: state,
-      printQRInTerminal: false,
+      printQRInTerminal: true,
       logger: pino({ level: 'silent' }),
       browser: Browsers.ubuntu('Chrome'),
       markOnlineOnConnect: true,
-      syncFullHistory: false, // Prevents 408 Timeouts
-      shouldSyncHistoryMessage: () => false, // Prevents Bad MAC errors
+      syncFullHistory: false, 
+      shouldSyncHistoryMessage: () => false,
       generateHighQualityLinkPreview: true
     });
 
-    // Bind store to track messages for Anti-Delete
+    // Bind store to events
     this.store.bind(this.sock.ev);
 
     this.sock.ev.on('creds.update', saveCreds);
@@ -80,12 +66,11 @@ class Client {
       } else if (connection === 'open') {
         const myNum = this.sock.user.id.split(':')[0];
         this.bot.isReady = true;
-        this.bot.config.owners = [myNum];
-
+        
         console.log(`\n\x1b[32m┌──⌈ 🚀 ASTRAX ONLINE ⌋\x1b[0m`);
         console.log(`\x1b[32m┃ Account: ${this.sock.user.name || 'AstraX'}\x1b[0m`);
         console.log(`\x1b[32m┃ Owner ID: ${myNum}\x1b[0m`);
-        console.log(`\x1b[32m┃ Status: Active 24/7\x1b[0m`);
+        console.log(`\x1b[32m┃ Status: 24/7 Active\x1b[0m`);
         console.log(`\x1b[32m└───────────────────\x1b[0m\n`);
 
         if (this.bot.io) this.bot.io.emit('auth.status', { status: 'connected' });
@@ -104,28 +89,21 @@ class Client {
     const jid = `${myNum}@s.whatsapp.net`;
     const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
     const uniqueCount = new Set(this.bot.commands.values()).size;
-    const thumbnail = this.bot.config.thumbnail;
 
     const msg = `┌──⌈ 🌌 ASTRAX ⌋
 ┃
-┃ Status: ACTIVE
-┃ Account: @${myNum}
+┃ Status: READY
 ┃ Prefix: [ ${prefix} ]
-┃ Commands: ${uniqueCount}
+┃ Modules: ${uniqueCount}
 ┃ 
-┃ Use ${prefix}help to start.
+┃ AstraX is now active and 
+┃ listening for commands.
 └────────────────`;
 
     await this.sock.sendMessage(jid, { 
-      image: { url: thumbnail },
-      caption: msg,
-      mentions: [jid]
+      image: { url: this.bot.config.thumbnail },
+      caption: msg
     }).catch(() => {});
-  }
-
-  async getPairingCode(phoneNumber) {
-    if (!this.sock) await this.connect();
-    return await this.sock.requestPairingCode(phoneNumber.replace(/[^0-9]/g, ''));
   }
 
   async sendMessage(jid, content, options = {}) {

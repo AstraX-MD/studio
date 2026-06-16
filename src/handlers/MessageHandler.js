@@ -16,13 +16,13 @@ class MessageHandler {
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
 
     const ctx = new Context(this.bot, msg);
-    if (!ctx.sender) return; // Null safety for system updates
+    if (!ctx.sender) return; 
 
     const senderId = ctx.sender.split('@')[0];
     const chatType = ctx.isGroup ? '\x1b[35m[GROUP]\x1b[0m' : '\x1b[34m[PRIVATE]\x1b[0m';
     
     // 2. Command Resolution
-    const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.isGroup ? ctx.jid : null) || '!';
+    const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
     let isCommand = false;
     let commandName = '';
     let args = [];
@@ -41,8 +41,6 @@ class MessageHandler {
     console.log(`${label} ${chatType} @${senderId} | ${cleanContent}${ctx.text?.length > 50 ? '...' : ''}`);
 
     // 4. Recursive Loop Guard
-    // Prevents the bot from answering its own "Boxed Reports" (starting with ┌──⌈)
-    // but allows it to trigger commands sent by itself (!command)
     if (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌')) return;
 
     // 5. Execution (Zero fromMe Check)

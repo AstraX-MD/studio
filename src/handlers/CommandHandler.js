@@ -1,7 +1,6 @@
 /**
- * @fileOverview Executes command logic and handles permissions/errors.
+ * @fileOverview Executes command logic and handles analytics.
  * v1.2.5: Fail-Safe Execution Core.
- * FIXED: Removed intrusive cooldown messages.
  */
 import PermissionMiddleware from '../middleware/PermissionMiddleware.js';
 import CooldownManager from '../managers/CooldownManager.js';
@@ -14,39 +13,38 @@ class CommandHandler {
 
   async execute(command, ctx, args) {
     try {
-      // 1. Global Disable Check
-      const disabledList = await this.bot.db.get('settings', 'disabledCommands') || [];
-      if (disabledList.includes(command.name)) {
-        return await ctx.reply(`┌──⌈ 🚫 COMMAND DISABLED ⌋\n┃ \n┃ This command is currently\n┃ restricted by the administrator.\n┃ \n└─ 🌌 ${this.bot.config.name.toUpperCase()}`);
-      }
-
-      // 2. Permission Validation
+      // 1. Permission Validation
       const isAllowed = await PermissionMiddleware.validate(this.bot, command, ctx);
       if (!isAllowed) return;
 
-      // 3. Cooldown Validation (Silent for UX)
+      // 2. Cooldown Validation (Silent for UX)
       const remaining = this.cooldownManager.getRemainingCooldown(
         ctx.sender, 
         command.name, 
-        (command.cooldown || 2) * 1000
+        (command.cooldown || 1) * 1000
       );
 
-      if (remaining) {
-        // Cooldown enforced silently as requested.
-        return;
-      }
+      if (remaining) return;
 
-      // 4. Execution Logic with Fail-Safe
+      // 3. Track Usage for Dashboard
+      const currentUsage = await this.bot.db.get('command_usage', command.name) || 0;
+      await this.bot.db.set('command_usage', command.name, currentUsage + 1);
+
+      // 4. Execution
       if (typeof command.execute === 'function') {
         await command.execute(ctx, args);
       } else {
-        throw new Error('Command logic missing execute() function.');
+        throw new Error('Command logic missing execute().');
       }
       
     } catch (error) {
-      console.log(`==> ERROR: [${command.name}] execution failed: ${error.message}`);
+      console.log(`\x1b[31m==> ERROR: [${command.name}] execution failed: ${error.message}\x1b[0m`);
+      
+      const failedCount = await this.bot.db.get('stats', 'failed_count') || 0;
+      await this.bot.db.set('stats', 'failed_count', failedCount + 1);
+
       if (!ctx.fromMe) {
-        await ctx.reply(`⚠️ *Framework Error*\n\nDetails: ${error.message}\n_Reporting to developers..._`);
+        await ctx.reply(`┌──⌈ ⚠️ ERROR ⌋\n┃ \n┃ Command execution failed.\n┃ Reason: ${error.message}\n└────────────────`);
       }
     }
   }
