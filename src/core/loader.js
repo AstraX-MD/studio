@@ -20,6 +20,7 @@ const OBSERVERS_DIR = join(PLUGINS_DIR, 'observers')
 export const commands = new Map()
 export const observers = new Map()
 export const aliases = new Map()
+export const categories = new Map()
 
 function scanFolder(dir) {
   let files = []
@@ -40,6 +41,7 @@ export async function initLoader() {
   commands.clear()
   aliases.clear()
   observers.clear()
+  categories.clear()
 
   const cmdFiles = scanFolder(COMMANDS_DIR)
   for (const file of cmdFiles) {
@@ -48,10 +50,22 @@ export async function initLoader() {
       const module = await import(fileUrl)
       const cmd = module.default || module
       if (cmd?.name && cmd?.execute) {
-        commands.set(cmd.name.toLowerCase(), cmd)
+        const name = cmd.name.toLowerCase()
+        commands.set(name, cmd)
+        
+        const relativePath = file.replace(COMMANDS_DIR, '').replace(/^[\/\\]/, '')
+        const category = relativePath.split(/[\/\\]/)[0] || 'misc'
+        cmd.category = cmd.category || category
+
         if (Array.isArray(cmd.aliases)) {
-          cmd.aliases.forEach(a => aliases.set(a.toLowerCase(), cmd.name.toLowerCase()))
+          cmd.aliases.forEach(a => aliases.set(a.toLowerCase(), name))
         }
+
+        if (!categories.has(cmd.category)) {
+          categories.set(cmd.category, [])
+        }
+        categories.get(cmd.category).push(cmd.name)
+
         logger.pluginLoaded(cmd.name, 'COMMAND', commands.size)
       }
     } catch (e) {

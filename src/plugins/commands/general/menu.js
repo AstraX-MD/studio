@@ -4,44 +4,44 @@
  * Simple English, Mobile-First, Performance Stats
  */
 
-import os from 'os';
-import { commands } from '../../../core/loader.js';
+import os from 'os'
+import { commands } from '../../../core/loader.js'
 
 export default {
   name: "menu",
   aliases: ["help", "commands"],
-  category: "general",
+  category: "utility",
   description: "Display the main command menu and system stats.",
-  execute: async (sock, m, args, ctx) => {
-    const { prefix, sender, db } = ctx;
-    const botName = await db.get('botname') || 'AstraX';
-    const owner = await db.get('owner') || 'Not Set';
-    const dbMode = db.mode || 'RAM';
+  execute: async (ctx) => {
+    const { sock, jid, msg, sender, prefix, pushName, bot } = ctx
+    const db = bot.db
+    const botName = await db.get('botname') || 'AstraX'
+    const owner = await db.get('owner') || 'Not Set'
+    const dbMode = db.mode || 'RAM'
     
     // RAM Progress Bar Calculation
-    const mem = process.memoryUsage();
-    const ramUsed = (mem.heapUsed / 1024 / 1024).toFixed(0);
-    const ramTotal = (os.totalmem() / 1024 / 1024).toFixed(0);
-    const percent = Math.min(100, Math.floor((mem.heapUsed / mem.heapTotal) * 100));
-    const barCount = Math.floor(percent / 10);
-    const ramBar = '■'.repeat(barCount) + '□'.repeat(10 - barCount);
+    const mem = process.memoryUsage()
+    const ramUsed = (mem.heapUsed / 1024 / 1024).toFixed(0)
+    const ramTotal = (mem.heapTotal / 1024 / 1024).toFixed(0)
+    const percent = Math.min(100, Math.floor((mem.heapUsed / mem.heapTotal) * 100))
+    const barCount = Math.floor(percent / 10)
+    const ramBar = '■'.repeat(barCount) + '□'.repeat(10 - barCount)
 
     // Group commands by category
-    const categories = {};
-    const uniqueCommands = new Set();
+    const categories = {}
+    const uniqueCommands = new Set()
     
     commands.forEach((cmd) => {
-      if (uniqueCommands.has(cmd.name)) return;
-      uniqueCommands.add(cmd.name);
+      if (uniqueCommands.has(cmd.name)) return
+      uniqueCommands.add(cmd.name)
       
-      const cat = cmd.category || 'misc';
-      if (!categories[cat]) categories[cat] = [];
-      categories[cat].push(cmd.name);
-    });
+      const cat = cmd.category || 'misc'
+      if (!categories[cat]) categories[cat] = []
+      categories[cat].push(cmd.name)
+    })
 
-    const totalCmds = uniqueCommands.size;
-    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' });
-    const pushName = m.pushName || 'User';
+    const totalCmds = uniqueCommands.size
+    const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 
     let menu = `┌──⌈ 🌌 ${botName.toUpperCase()} ⌋
 ┃ 👤 User: @${sender.split('@')[0]}
@@ -55,20 +55,20 @@ export default {
 ┃ 📦 Mode: ${dbMode.toUpperCase()}
 ┃ 🧠 RAM: [${ramBar}] ${percent}%
 ┃ 🛠️ Tools: ${totalCmds} Modules
-┃\n`;
+┃\n`
 
     // Display Categories and Commands
-    const sortedCats = Object.keys(categories).sort();
+    const sortedCats = Object.keys(categories).sort()
     sortedCats.forEach(cat => {
-      menu += `├─⌈ ${cat.toUpperCase()} ⌋\n`;
-      menu += `┃ ${categories[cat].map(n => prefix + n).join(', ')}\n┃\n`;
+      menu += `├─⌈ ${cat.toUpperCase()} ⌋\n`
+      menu += `┃ ${categories[cat].map(n => prefix + n).join(', ')}\n┃\n`
     });
 
-    menu += `└─ ${botName} Enterprise`;
+    menu += `└─ ${botName} Enterprise`
 
-    await sock.sendMessage(m.key.remoteJid, { 
+    await sock.sendMessage(jid, { 
       text: menu,
       mentions: [sender]
-    }, { quoted: m });
+    }, { quoted: msg })
   }
-};
+}

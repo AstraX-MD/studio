@@ -101,7 +101,7 @@ export async function routeMessage(sock, m) {
 
     logger.executed(cmd.name, sender.split('@')[0])
     try {
-      await cmd.execute({ bot: { client: { sock }, db }, sock, msg: m, jid: from, sender, text: body, logger, ...m }, args)
+      await cmd.execute({ bot: { client: { sock }, db }, sock, msg: m, jid: from, sender, text: body, logger, pushName: m.pushName || 'User', prefix: currentPrefix, ...m }, args)
     } catch (e) {
       logger.error('CMD', `${cmd.name} crashed`, e.message)
       await sock.sendMessage(from, { text: `⚠️ Error: ${e.message}` }, { quoted: m })

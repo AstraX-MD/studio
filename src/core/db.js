@@ -13,14 +13,12 @@ export const DEFAULTS = {
   botimage: 'https://i.ibb.co/QvGY7dqB/file-00000000e1107243ad54749c06fe2d80.png',
   owner: '',
   mode: 'public',
-  channelEnabled: true,
-  channelJid: '120363426850850275@newsletter',
-  channelName: 'AstraX Updates',
   autoRead: false,
   autoTyping: false,
   autoRecording: false,
   antiDelete: true,
-  antiEdit: true
+  antiEdit: true,
+  disabledCmds: []
 }
 
 class RamStore {

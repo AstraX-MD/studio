@@ -10,7 +10,7 @@ import fs from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import qrcode from 'qrcode-terminal'
-import baileys from '@whiskeysockets/baileys'
+import fetch from 'node-fetch'
 
 import { initDb, db } from './src/core/db.js'
 import { logger } from './src/core/logger.js'
@@ -27,7 +27,12 @@ const app = express()
 const PORT = process.env.PORT || 10000
 
 app.get('/', (req, res) => {
-  res.json({ status: 'online', bot: 'AstraX', uptime: Math.floor(process.uptime()) })
+  res.json({ 
+    status: 'online', 
+    bot: 'AstraX', 
+    uptime: Math.floor(process.uptime()),
+    memory: `${(process.memoryUsage().heapUsed / 1024 / 1024).toFixed(2)}MB`
+  })
 })
 
 app.listen(PORT, () => {
@@ -38,22 +43,8 @@ setInterval(() => {
   fetch(`http://localhost:${PORT}`).catch(() => {})
 }, 14 * 60 * 1000)
 
-// ─────────────────────────────────────────────
-// BAILEYS 30-PROBE SWARM
-// ─────────────────────────────────────────────
-function probe(pkg, name) {
-  const src = pkg?.default || pkg
-  if (src?.[name]) return src[name]
-  if (typeof src === 'function' && name === 'makeWASocket') return src
-  if (src && typeof src === 'object') {
-    const keys = Object.keys(src)
-    const match = keys.find(k => k.toLowerCase() === name.toLowerCase())
-    if (match) return src[match]
-  }
-  return null
-}
-
 let isStarting = false
+let globalSock = null
 
 async function startBot() {
   if (isStarting) return
@@ -64,30 +55,47 @@ async function startBot() {
   await initDb()
   const pluginStats = await initLoader()
 
-  const makeWASocket = probe(baileys, 'makeWASocket')
-  const useMultiFileAuthState = probe(baileys, 'useMultiFileAuthState')
-  const DisconnectReason = probe(baileys, 'DisconnectReason')
-  const Browsers = probe(baileys, 'Browsers')
-  const fetchLatestBaileysVersion = probe(baileys, 'fetchLatestBaileysVersion')
+  // Dynamic discovery engine for Baileys tools
+  const getCore = async () => {
+    const baileys = (await import('@whiskeysockets/baileys')).default || (await import('@whiskeysockets/baileys'))
+    const probe = (name) => {
+      if (baileys[name]) return baileys[name]
+      if (typeof baileys === 'object') {
+        const keys = Object.keys(baileys)
+        const match = keys.find(k => k.toLowerCase() === name.toLowerCase())
+        if (match) return baileys[match]
+      }
+      return null
+    }
+    return {
+      makeWASocket: probe('makeWASocket') || baileys.default,
+      useMultiFileAuthState: probe('useMultiFileAuthState'),
+      DisconnectReason: probe('DisconnectReason'),
+      Browsers: probe('Browsers'),
+      fetchLatestBaileysVersion: probe('fetchLatestBaileysVersion')
+    }
+  }
 
-  if (!useMultiFileAuthState || !makeWASocket) {
+  const core = await getCore()
+  if (!core.useMultiFileAuthState || !core.makeWASocket) {
     logger.error('CRASH', 'Baileys core unresolved. Swarm failed.')
     process.exit(1)
   }
 
-  const { version } = await fetchLatestBaileysVersion()
-  const { state, saveCreds } = await useMultiFileAuthState(join(__dirname, 'sessions'))
+  const { version } = await core.fetchLatestBaileysVersion()
+  const { state, saveCreds } = await core.useMultiFileAuthState(join(__dirname, 'sessions'))
 
-  const sock = makeWASocket({
+  const sock = core.makeWASocket({
     version,
     auth: state,
     printQRInTerminal: false,
     logger: pino({ level: 'silent' }),
-    browser: Browsers.ubuntu('Chrome'),
+    browser: core.Browsers.ubuntu('Chrome'),
     syncFullHistory: false,
     shouldSyncHistoryMessage: () => false
   })
 
+  globalSock = sock
   sock.ev.on('creds.update', saveCreds)
 
   sock.ev.on('connection.update', async (update) => {
@@ -99,7 +107,7 @@ async function startBot() {
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode
-      if (statusCode !== DisconnectReason.loggedOut) {
+      if (statusCode !== core.DisconnectReason.loggedOut) {
         isStarting = false
         setTimeout(() => startBot(), 10000)
       } else {
