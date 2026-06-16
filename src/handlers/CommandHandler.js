@@ -44,7 +44,7 @@ class CommandHandler {
       await this.bot.db.set('stats', 'failed_count', failedCount + 1);
 
       if (!ctx.fromMe) {
-        await ctx.reply(`┌──⌈ ⚠️ ERROR ⌋\n┃ \n┃ Command execution failed.\n┃ Reason: ${error.message}\n└────────────────`);
+        await ctx.reply(`┌──⌈ ⚠️ ERROR ⌋\n┃ \n┃ Command failed.\n┃ Reason: ${error.message}\n└────────────────`);
       }
     }
   }

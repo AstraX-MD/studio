@@ -1,5 +1,6 @@
 /**
  * @fileOverview AstraX Master Menu.
+ * v1.2.5: High-speed categorization for 475+ modules.
  */
 export default {
   name: "help",
@@ -37,6 +38,7 @@ export default {
 ┃
 `;
 
+    // High-end categorized display
     const displayOrder = ['admin', 'ai-chat', 'ai-image', 'ai-video', 'ai-music', 'economy', 'downloaders', 'logos', 'reactions', 'tools', 'security', 'utility'];
     
     displayOrder.forEach(cat => {

@@ -1,6 +1,6 @@
 /**
  * @fileOverview AstraX High-Speed Message Router.
- * v1.2.5: Zero fromMe restrictions. Expert Colored Logs. Simple English.
+ * v1.2.5: Zero fromMe restrictions. Expert Colored Logs.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -16,7 +16,7 @@ class MessageHandler {
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
 
     const ctx = new Context(this.bot, msg);
-    if (!ctx.sender) return; 
+    if (!ctx.sender) return; // FIX: Prevent split of null
 
     const senderId = ctx.sender.split('@')[0];
     const chatType = ctx.isGroup ? '\x1b[35m[GROUP]\x1b[0m' : '\x1b[34m[PRIVATE]\x1b[0m';
@@ -41,6 +41,7 @@ class MessageHandler {
     console.log(`${label} ${chatType} @${senderId} | ${cleanContent}${ctx.text?.length > 50 ? '...' : ''}`);
 
     // 4. Recursive Loop Guard
+    // Allow the bot to hear commands but ignore its own structured boxed results
     if (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌')) return;
 
     // 5. Execution (Zero fromMe Check)

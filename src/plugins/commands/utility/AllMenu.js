@@ -1,6 +1,5 @@
 /**
  * @fileOverview Directory of all specialized menus.
- * v1.2.5: High-speed categorized index.
  */
 export default {
   name: "allmenu",
@@ -18,22 +17,14 @@ export default {
     const output = `┌──⌈ 📑 MENU DIRECTORY ⌋
 ┃
 ├─⊷ ${prefix}adminmenu
-├─⊷ ${prefix}aimenu
-├─⊷ ${prefix}animemenu
-├─⊷ ${prefix}automationmenu
-├─⊷ ${prefix}convertermenu
-├─⊷ ${prefix}economymenu
-├─⊷ ${prefix}educationmenu
-├─⊷ ${prefix}footballmenu
-├─⊷ ${prefix}funmenu
+├─⊷ ${prefix}aichatmenu
+├─⊷ ${prefix}aiimagemenu
+├─⊷ ${prefix}aivideomenu
+├─⊷ ${prefix}aimusicmenu
+├─⊷  ${prefix}economymenu
 ├─⊷ ${prefix}logomenu
-├─⊷ ${prefix}musicmenu
-├─⊷ ${prefix}nsfwmenu
-├─⊷ ${prefix}photomenu
-├─⊷ ${prefix}profilemenu
+├─⊷ ${prefix}reactionsmenu
 ├─⊷ ${prefix}securitymenu
-├─⊷ ${prefix}stalkermenu
-├─⊷ ${prefix}sudomenu
 ├─⊷ ${prefix}toolmenu
 ├─⊷ ${prefix}utilitymenu
 ┃

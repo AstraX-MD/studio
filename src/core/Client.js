@@ -1,7 +1,7 @@
 /**
  * @fileOverview Baileys Connection Core.
- * v1.2.5: Optimized for 24/7 Stability with ESM compatibility.
- * FIXED: Standardized makeInMemoryStore access to prevent boot crashes.
+ * Optimized for 24/7 Stability with Baileys v6.7.22.
+ * FIXED: Standardized ESM access for makeInMemoryStore.
  */
 import pkg from '@whiskeysockets/baileys';
 const { 
@@ -40,7 +40,7 @@ class Client {
       logger: pino({ level: 'silent' }),
       browser: Browsers.ubuntu('Chrome'),
       markOnlineOnConnect: true,
-      syncFullHistory: false, // SOLVES 408 TIMEOUT
+      syncFullHistory: false, // PREVENTS 408 TIMEOUT
       shouldSyncHistoryMessage: () => false, // PREVENTS BAD MAC ERRORS
       generateHighQualityLinkPreview: true
     });
@@ -91,13 +91,13 @@ class Client {
     const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
     const uniqueCount = new Set(this.bot.commands.values()).size;
 
-    const msg = `┌──⌈ 🌌 ASTRAX ⌋
+    const msg = `┌──⌈ 🚀 ASTRAX ⌋
 ┃
 ┃ Status: READY
 ┃ Prefix: [ ${prefix} ]
 ┃ Modules: ${uniqueCount}
 ┃ 
-┃ AstraX is now active and 
+┃ System is now active and 
 ┃ listening for commands.
 └────────────────`;
 
