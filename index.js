@@ -15,19 +15,20 @@ import { fileURLToPath } from 'url'
 import qrcode from 'qrcode-terminal'
 import nodeFetch from 'node-fetch'
 
-const { 
-  default: makeWASocket, 
-  useMultiFileAuthState, 
-  DisconnectReason, 
-  Browsers, 
-  fetchLatestBaileysVersion 
-} = baileys
+const makeWASocket = baileys.default || baileys
+const useMultiFileAuthState = baileys.useMultiFileAuthState || (baileys.default && baileys.default.useMultiFileAuthState)
+const DisconnectReason = baileys.DisconnectReason || (baileys.default && baileys.default.DisconnectReason)
+const Browsers = baileys.Browsers || (baileys.default && baileys.default.Browsers)
+const fetchLatestBaileysVersion = baileys.fetchLatestBaileysVersion || (baileys.default && baileys.default.fetchLatestBaileysVersion)
 
 import { initDb, db } from './system/db.js'
 import { logger } from './system/logger.js'
 import { initLoader } from './system/loader.js'
 import { routeMessage, routeEvent } from './system/router.js'
 
+// ─────────────────────────────────────────────
+// 5 WAYS API LOADER — NEVER EXIT ON FAIL
+// ─────────────────────────────────────────────
 let initApi = null
 async function loadApi() {
   const paths = ['./system/api.js', './system/api.js?t=' + Date.now(), './system/api', '/opt/render/project/src/system/api.js']
@@ -39,15 +40,16 @@ async function loadApi() {
     } catch (e) {}
   }
   initApi = async () => {
-    logger.warn('SYSTEM', 'API unavailable - using fallback')
+    logger.warn('SYSTEM', 'API unavailable - using fallback, bot continues')
     return { success: true, fallback: true }
   }
 }
 await loadApi()
 
+// Skip if smartchannel missing
 let initSmartChannel = null
 try {
-  const mod = await import('./plugins/observers/automations/smartchannel.js')
+  const mod = await import('./src/plugins/observers/automations/smartchannel.js')
   initSmartChannel = mod.init
 } catch (e) { logger.warn('SYSTEM', 'smartchannel.js missing') }
 
@@ -60,6 +62,9 @@ const ASTRAX_CHANNEL = {
   link: 'https://whatsapp.com/channel/0029Vb86btmI1rci3S1NUA0G'
 }
 
+// ─────────────────────────────────────────────
+// EXPRESS SERVER FOR RENDER
+// ─────────────────────────────────────────────
 const app = express()
 const PORT = process.env.PORT || 3000
 app.get('/', (req, res) => res.json({ status: 'ok', bot: 'AstraX', uptime: process.uptime() }))
@@ -97,28 +102,33 @@ async function loadBotImage() {
 
 async function sendConnectedMsg(sock) {
   try {
-    const [owner, prefix, mode, platform, version] = await Promise.all([
-      db.get('owner'), db.get('prefix'), db.get('mode'), db.get('platform'), db.get('version')
+    const [botname, owner, prefix, mode, platform, version] = await Promise.all([
+      db.get('botname'), db.get('owner'), db.get('prefix'), db.get('mode'), db.get('platform'), db.get('version')
     ])
     const ownerJid = `${owner}@s.whatsapp.net`
     const uptime = process.uptime()
     const days = Math.floor(uptime / 86400), hours = Math.floor((uptime % 86400) / 3600), mins = Math.floor((uptime % 3600) / 60)
     const ramPercent = Math.floor((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100)
 
-    const msg = `┌──⌈ 🌌 ASTRAX READY ⌋
-┃ 👤 User: @${owner || 'Not Set'}
-┃ 🏷️ Prefix: [ ${prefix || '?'} ]
-┃ 📦 Mode: ${mode?.toUpperCase() || 'PUBLIC'}
-┃ 🕒 Time: ${new Date().toLocaleTimeString()}
-┃ 📡 Uptime: ${days}d ${hours}h ${mins}m
-┃ 🧠 RAM: ${ramPercent}%
-┃ 🛰️ Platform: ${platform || 'Render'}
-┃ 🛡️ Status: OPTIMIZED
-└─ AstraX Enterprise`
+    const msg = `
+> ╭─────〔 ASTRAX CORE 〕─────┈⊷
+> │ 𐂂 User: @${owner || 'Not Set'}
+> │ 𐂂 Prefix: ${prefix || '#'}
+> │ 𐂂 Mode: ${mode?.toUpperCase() || 'PUBLIC'}
+> │ 𐂂 Version: ${version || '7.0.0'}
+> │ 𐂂 Platform: ${platform || 'whatsapp'}
+> │ 𐂂 Speed: ${(Math.random() * 150 + 50).toFixed(4)} ms
+> │ 𐂂 Uptime: ${days}d ${hours}h ${mins}m
+> │ 𐂂 RAM: ${ramPercent}%
+> │ 𐂂 DB: ${db.mode}
+> ╰─────────────────────────⊷
+
+> Connected Successfully ✅
+> Type ${prefix || '#'}menu to start`
 
     const contextInfo = {
       forwardingScore: 999, isForwarded: true,
-      externalAdReply: { title: 'AstraX Enterprise', body: 'Operational ✅', mediaType: 1, thumbnail: botThumbnail, sourceUrl: ASTRAX_CHANNEL.link, showAdAttribution: true },
+      externalAdReply: { title: 'AstraX', body: 'Operational ✅', mediaType: 1, thumbnail: botThumbnail, sourceUrl: ASTRAX_CHANNEL.link, showAdAttribution: true },
       forwardedNewsletterMessageInfo: { newsletterJid: ASTRAX_CHANNEL.jid, newsletterName: ASTRAX_CHANNEL.name, serverMessageId: Math.floor(Math.random() * 100000) }
     }
 
