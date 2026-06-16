@@ -18,9 +18,9 @@ export const observers = new Map()
 export const categories = new Map()
 export const aliases = new Map()
 
-// Fixed paths using process.cwd() to ensure accuracy on Render
 const PLUGINS_DIR = join(process.cwd(), 'src', 'plugins')
 const COMMANDS_DIR = join(PLUGINS_DIR, 'commands')
+const EVENTS_DIR = join(PLUGINS_DIR, 'events')
 const OBSERVERS_DIR = join(PLUGINS_DIR, 'observers')
 
 function scanFolder(dir, ext = '.js') {
@@ -66,6 +66,9 @@ async function loadCommands() {
         if (Array.isArray(cmd.alias)) {
           cmd.alias.forEach(a => aliases.set(a.toLowerCase(), name))
         }
+        if (Array.isArray(cmd.aliases)) {
+          cmd.aliases.forEach(a => aliases.set(a.toLowerCase(), name))
+        }
 
         if (!categories.has(cmd.category)) {
           categories.set(cmd.category, { name: cmd.category, commands: [] })
@@ -82,14 +85,19 @@ async function loadCommands() {
 
 async function loadObservers() {
   observers.clear()
-  const files = scanFolder(OBSERVERS_DIR)
-  for (const file of files) {
+  // Scan both observers and events folders
+  const observerFiles = scanFolder(OBSERVERS_DIR)
+  const eventFiles = scanFolder(EVENTS_DIR)
+  const allFiles = [...observerFiles, ...eventFiles]
+
+  for (const file of allFiles) {
     try {
       const module = await import(pathToFileURL(file).href + `?t=${Date.now()}`)
       const obs = module.default || module
-      if (obs?.name && obs?.execute) {
-        observers.set(obs.name.toLowerCase(), obs)
-        logger.pluginLoaded(obs.name, 'OBSERVER', observers.size)
+      const name = obs.name || file.split(/[\/\\]/).pop().replace('.js', '')
+      if (obs?.execute) {
+        observers.set(name.toLowerCase(), { ...obs, enabled: obs.enabled !== false })
+        logger.pluginLoaded(name, 'OBSERVER', observers.size)
       }
     } catch (e) {}
   }

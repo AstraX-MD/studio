@@ -21,6 +21,7 @@ import { initDb, db } from './system/db.js'
 import { logger } from './system/logger.js'
 import { initLoader } from './system/loader.js'
 import { routeMessage, routeEvent } from './system/router.js'
+import { fonts } from './system/fonts.js'
 
 // ─────────────────────────────────────────────
 // NODE VERSION GUARD
@@ -123,7 +124,7 @@ function loadSessionFromEnv() {
 let botThumbnail = null
 async function loadBotImage() {
   try {
-    const imageUrl = await db.get('botimage') || 'https://i.ibb.co/QvGY7dqB/file-00000000e1107243ad54749c06fe2d80.png'
+    const imageUrl = await db.get('botimage') || 'https://i.ibb.co/QvGY7dqB/file-00000e1107243ad54749c06fe2d80.png'
     const res = await nodeFetch(imageUrl)
     const arrayBuffer = await res.arrayBuffer()
     botThumbnail = Buffer.from(arrayBuffer)
@@ -296,6 +297,15 @@ async function startBot() {
 
   sock.ev.on('group-participants.update', async (update) => { await routeEvent(sock, 'group-participants.update', update) })
   sock.ev.on('call', async (calls) => { await routeEvent(sock, 'call', calls) })
+
+  // Hooks for observers (Anti-Delete, Anti-Edit, etc)
+  sock.ev.on('messages.update', async (updates) => {
+    for (const update of updates) {
+      if (update.update.messageStubType === 8) await routeEvent(sock, 'messages.delete', update)
+      if (update.update.message) await routeEvent(sock, 'messages.edit', update)
+    }
+  })
+  sock.ev.on('messages.reaction', async (reactions) => { await routeEvent(sock, 'messages.reaction', reactions) })
 }
 
 process.on('uncaughtException', (err) => {
