@@ -1,7 +1,8 @@
 /**
- * AstraX - src/core/loader.js
+ * AstraX - loader.js
  * Auto-loads all plugins from plugins/commands and plugins/observers
  * Zero hardcode — scans folders dynamically
+ * Hot-reload support — no restart needed for new plugins
  */
 
 import { readdirSync, existsSync, mkdirSync } from 'fs'

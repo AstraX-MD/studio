@@ -1,23 +1,31 @@
 /**
  * AstraX - router.js
  * Elite message routing engine — Prefix logic, channel context, permissions
- * OWNER = PAIRING CODE NUMBER ONLY - NO SENDER CHECK
+ * All settings real-time from DB — no restart needed
  */
 
 import { db } from './db.js'
 import { logger } from './logger.js'
-import { box } from './box.js'
 import { fonts } from './fonts.js'
 
 let commands = new Map()
 let observers = new Map()
 
+// No-op box utility to keep commands running without box.js
+const box = {
+  info: (msg) => msg,
+  error: (msg) => msg,
+  success: (msg) => msg
+}
+
 export function setCommands(cmds) {
   commands = cmds
+  logger.success('ROUTER', `Synchronized ${cmds.size} commands`)
 }
 
 export function setObservers(obs) {
   observers = obs
+  logger.success('ROUTER', `Synchronized ${obs.size} observers`)
 }
 
 export function getCommand(name) {
@@ -70,7 +78,11 @@ async function checkPermission(sock, m, cmd) {
   const botJid = sock.user?.id || ''
   const botClean = cleanJid(botJid)
   
-  const isOwnerBot = botClean === owner || botJid.includes(owner) || botClean.replace(/[^0-9]/g, '') === owner
+  const isOwnerBot = 
+    botClean === owner || 
+    botJid.includes(owner) || 
+    botClean.replace(/[^0-9]/g, '') === owner ||
+    botJid.startsWith(`${owner}@`)
 
   const mode = await db.get('mode') || 'public'
   if (mode === 'private' && !isOwnerBot) return false
@@ -148,17 +160,16 @@ export async function routeMessage(sock, m) {
 
     const permCheck = await checkPermission(sock, m, cmd)
     if (permCheck !== true) {
-      const msg = await box.error(permCheck.error || 'Access Denied.')
-      return await sock.sendMessage(from, { text: msg }, { quoted: m })
+      return await sock.sendMessage(from, { text: permCheck.error || 'Access Denied.' }, { quoted: m })
     }
 
     logger.executed(cmd.name, sender.split('@')[0])
     try {
       const contextInfo = await getChannelContext()
-      await cmd.execute({ bot: { client: { sock }, db, managers: { settings: { get: async (c, k) => db.get(k) } } }, sock, msg: m, jid: from, sender, isGroup, text: body, ...m }, args)
+      await cmd.execute({ bot: { client: { sock }, db, managers: { settings: { get: async (c, k) => db.get(k) } } }, sock, msg: m, jid: from, sender, isGroup, text: body, box, fonts, logger, contextInfo, ...m }, args)
     } catch (e) {
       logger.error('CMD', `${cmd.name} crashed`, e.message)
-      await sock.sendMessage(from, { text: await box.error(`Command failed: ${e.message}`) }, { quoted: m })
+      await sock.sendMessage(from, { text: `⚠️ Command failed: ${e.message}` }, { quoted: m })
     }
   } catch (e) { logger.error('ROUTER', 'Failed', e.message) }
 }

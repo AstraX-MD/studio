@@ -1,6 +1,7 @@
 /**
  * AstraX Enterprise - index.js
  * High-speed entry point with Express port binding and 30-probe swarm.
+ * Optimized for Render + Zero Port Errors.
  */
 
 import 'dotenv/config'
@@ -107,7 +108,7 @@ async function startBot() {
         process.exit(1)
       }
     } else if (connection === 'open') {
-      const botNumber = sock.user.id.split(':')[0]
+      const botNumber = sock.user.id.split(':')[0].split('@')[0]
       await db.set('owner', botNumber)
       const botname = await db.get('botname') || 'AstraX'
       const prefix = await db.get('prefix') || '!'

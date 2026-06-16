@@ -1,5 +1,10 @@
+/**
+ * AstraX - box.js
+ * DEPRECATED: Box logic moved to hardcoded templates for maximum speed.
+ * This file is empty to prevent import errors.
+ */
 export const box = {
-  info: async (msg) => `┌──⌈ ℹ️ INFO ⌋\n┃\n┃ ${msg}\n┃\n└────────────────`,
-  error: async (msg) => `┌──⌈ ⚠️ ERROR ⌋\n┃\n┃ ${msg}\n┃\n└────────────────`,
-  success: async (msg) => `┌──⌈ ✅ SUCCESS ⌋\n┃\n┃ ${msg}\n┃\n└────────────────`
+  info: (msg) => msg,
+  error: (msg) => msg,
+  success: (msg) => msg
 };
