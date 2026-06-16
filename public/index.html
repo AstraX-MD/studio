@@ -3,140 +3,137 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0, maximum-scale=1.0, user-scalable=no">
-    <title>AstraX Master Console</title>
+    <title>AstraX Bot Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
     <script src="/socket.io/socket.io.js"></script>
     <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: #050406; color: #fff; overflow-x: hidden; }
-        .tab-content { display: none; padding-bottom: 80px; }
+        body { font-family: 'Inter', sans-serif; background-color: #050406; color: #fff; overflow-x: hidden; }
+        .tab-content { display: none; }
         .tab-content.active { display: block; }
-        .bottom-nav { background: rgba(13, 11, 19, 0.95); backdrop-blur: 10px; border-top: 1px solid rgba(255,255,255,0.05); }
-        .nav-item { color: #888; transition: 0.3s; }
-        .nav-item.active { color: #9747FF; }
-        .glass-card { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); border-radius: 20px; }
-        .glow-btn { background: #9747FF; box-shadow: 0 0 20px rgba(151, 71, 255, 0.4); }
+        .bottom-nav { background: rgba(15, 12, 20, 0.95); backdrop-filter: blur(10px); border-top: 1px solid rgba(255,255,255,0.05); }
+        .tab-btn.active { color: #9747FF; }
+        .tab-btn.active svg { transform: translateY(-2px); }
+        .glass { background: rgba(255,255,255,0.03); border: 1px solid rgba(255,255,255,0.05); }
         .switch { position: relative; display: inline-block; width: 44px; height: 24px; }
         .switch input { opacity: 0; width: 0; height: 0; }
-        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 34px; }
+        .slider { position: absolute; cursor: pointer; top: 0; left: 0; right: 0; bottom: 0; background-color: #333; transition: .4s; border-radius: 24px; }
         .slider:before { position: absolute; content: ""; height: 18px; width: 18px; left: 3px; bottom: 3px; background-color: white; transition: .4s; border-radius: 50%; }
         input:checked + .slider { background-color: #9747FF; }
         input:checked + .slider:before { transform: translateX(20px); }
-        .loader { width: 12px; height: 12px; background: #9747FF; border-radius: 50%; display: inline-block; animation: pulse 1s infinite; }
-        @keyframes pulse { 0% { transform: scale(0.8); opacity: 0.5; } 50% { transform: scale(1.2); opacity: 1; } 100% { transform: scale(0.8); opacity: 0.5; } }
+        ::-webkit-scrollbar { width: 0px; }
     </style>
 </head>
-<body class="p-4">
+<body class="pb-24">
 
-    <!-- Header -->
-    <header class="flex justify-between items-center mb-6">
+    <!-- HEADER -->
+    <header class="p-6 flex justify-between items-center sticky top-0 bg-[#050406] z-50 border-b border-white/5">
         <div>
-            <h1 class="text-2xl font-extrabold tracking-tighter">ASTRAX <span class="text-[#9747FF]">MD</span></h1>
-            <p class="text-xs text-gray-400 font-mono" id="node-id">NODE: CLOUD-READY</p>
+            <h1 class="text-xl font-extrabold tracking-tighter text-[#9747FF]">ASTRAX</h1>
+            <p class="text-[10px] uppercase tracking-widest text-white/40 font-semibold" id="botStatus">Initializing...</p>
         </div>
-        <div class="flex items-center gap-2 bg-green-500/10 px-3 py-1.5 rounded-full border border-green-500/20">
-            <div class="loader"></div>
-            <span class="text-[10px] font-bold text-green-500 uppercase tracking-widest">Online</span>
-        </div>
+        <img id="headerThumb" src="https://i.ibb.co/QvGY7dqB/file-00000000e1107243ad54749c06fe2d80.png" class="w-10 h-10 rounded-full border border-[#9747FF]/30 object-cover">
     </header>
 
     <!-- TAB 1: HEALTH -->
-    <div id="health" class="tab-content active animate-in fade-in">
+    <div id="health" class="tab-content active p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <h2 class="text-2xl font-bold mb-1">Bot Health</h2>
+        <p class="text-white/40 text-sm mb-6">Manage your bot's identity and speed.</p>
+
         <div class="grid grid-cols-2 gap-4 mb-6">
-            <div class="glass-card p-4 text-center">
-                <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Owner</p>
-                <p class="text-sm font-mono text-[#9747FF]" id="owner-num">Not Set</p>
+            <div class="glass p-4 rounded-3xl">
+                <p class="text-[10px] text-white/40 uppercase font-bold mb-1">Owner</p>
+                <p class="text-sm font-bold truncate" id="ownerNum">Not Set</p>
             </div>
-            <div class="glass-card p-4 text-center">
-                <p class="text-[10px] text-gray-500 uppercase font-bold mb-1">Speed</p>
-                <p class="text-sm font-mono text-green-400" id="ping-val">124ms</p>
+            <div class="glass p-4 rounded-3xl">
+                <p class="text-[10px] text-white/40 uppercase font-bold mb-1">Speed</p>
+                <p class="text-sm font-bold" id="pingMs">Calculating...</p>
             </div>
         </div>
 
-        <div class="glass-card p-6 space-y-6">
-            <h2 class="text-lg font-bold">Update Bot Info</h2>
-            
-            <div class="space-y-2">
-                <label class="text-[10px] text-gray-500 uppercase font-bold">Bot Name</label>
-                <input type="text" id="bot-name" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="AstraX">
+        <div class="glass p-6 rounded-[2rem] space-y-5">
+            <div>
+                <label class="text-[10px] text-white/40 uppercase font-bold block mb-2">Bot Name</label>
+                <input type="text" id="botNameInput" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="AstraX MD">
             </div>
-
-            <div class="space-y-2">
-                <label class="text-[10px] text-gray-500 uppercase font-bold">Command Prefix</label>
-                <input type="text" id="bot-prefix" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="!">
+            <div>
+                <label class="text-[10px] text-white/40 uppercase font-bold block mb-2">Prefix</label>
+                <input type="text" id="prefixInput" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="!">
             </div>
-
-            <div class="space-y-2">
-                <label class="text-[10px] text-gray-500 uppercase font-bold">Bot Image (Link)</label>
-                <input type="text" id="bot-image" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="https://...">
+            <div>
+                <label class="text-[10px] text-white/40 uppercase font-bold block mb-2">Image Link</label>
+                <input type="text" id="thumbInput" class="w-full bg-white/5 border border-white/10 rounded-xl px-4 py-3 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="https://image.url">
             </div>
-
-            <button onclick="updateConfig()" class="w-full glow-btn p-4 rounded-2xl font-bold text-sm">Save Changes</button>
+            <button onclick="updateConfig()" class="w-full bg-[#9747FF] py-4 rounded-2xl font-bold text-sm shadow-xl shadow-[#9747FF]/20 active:scale-95 transition-all">Save Changes</button>
         </div>
     </div>
 
     <!-- TAB 2: SAFETY -->
-    <div id="safety" class="tab-content animate-in fade-in">
-        <h2 class="text-2xl font-bold mb-6">Warden Safety</h2>
-        <div class="space-y-4" id="feature-list">
-            <!-- Switches will load here -->
+    <div id="safety" class="tab-content p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <h2 class="text-2xl font-bold mb-1">Safety Switches</h2>
+        <p class="text-white/40 text-sm mb-6">Toggle your bot's smart features.</p>
+
+        <div id="featureList" class="space-y-3">
+            <!-- Features populated by JS -->
         </div>
     </div>
 
     <!-- TAB 3: COMMANDS -->
-    <div id="commands" class="tab-content animate-in fade-in">
-        <h2 class="text-2xl font-bold mb-4">Command Finder</h2>
-        <div class="relative mb-6">
-            <input type="text" id="cmd-search" onkeyup="searchCmds()" class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 text-sm focus:outline-none focus:border-[#9747FF]" placeholder="Search 490+ commands...">
-        </div>
-        <div class="space-y-3" id="command-list">
-            <!-- Commands will load here -->
+    <div id="commands" class="tab-content p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <h2 class="text-2xl font-bold mb-1">Command Finder</h2>
+        <p class="text-white/40 text-sm mb-4">Search through 490+ tools.</p>
+        
+        <input type="text" id="cmdSearch" onkeyup="filterCommands()" class="w-full bg-white/5 border border-white/10 rounded-2xl px-5 py-4 text-sm mb-6 focus:outline-none focus:border-[#9747FF]" placeholder="Search tools (e.g. play, menu)...">
+
+        <div id="cmdList" class="space-y-4">
+            <!-- Commands populated by JS -->
         </div>
     </div>
 
     <!-- TAB 4: STATS -->
-    <div id="stats" class="tab-content animate-in fade-in">
-        <h2 class="text-2xl font-bold mb-6">Bot Analytics</h2>
-        <div class="glass-card p-6 mb-6">
-            <div class="flex justify-between items-center mb-4">
-                <span class="text-gray-400 text-sm">Total Commands Used</span>
-                <span class="text-2xl font-black text-[#9747FF]" id="total-exec">0</span>
+    <div id="stats" class="tab-content p-6 animate-in fade-in slide-in-from-bottom-4 duration-500">
+        <h2 class="text-2xl font-bold mb-1">Bot Stats</h2>
+        <p class="text-white/40 text-sm mb-6">See how your bot is performing.</p>
+
+        <div class="grid grid-cols-2 gap-4 mb-8">
+            <div class="glass p-6 rounded-3xl text-center">
+                <p class="text-3xl font-black text-[#9747FF]" id="totalExec">0</p>
+                <p class="text-[10px] text-white/40 uppercase font-bold mt-1">Total Sent</p>
             </div>
-            <div class="w-full bg-white/5 h-2 rounded-full overflow-hidden">
-                <div class="bg-[#9747FF] h-full" style="width: 75%"></div>
+            <div class="glass p-6 rounded-3xl text-center">
+                <p class="text-3xl font-black text-red-500" id="failedCount">0</p>
+                <p class="text-[10px] text-white/40 uppercase font-bold mt-1">Failed</p>
             </div>
         </div>
 
-        <div class="space-y-4">
-            <h3 class="text-[10px] text-gray-500 uppercase font-bold">Most Popular</h3>
-            <div id="popular-cmds" class="space-y-2"></div>
+        <h3 class="text-sm font-bold uppercase tracking-widest text-white/40 mb-4">Most Popular</h3>
+        <div id="topCommands" class="space-y-2 mb-8">
+            <!-- Top cmds -->
         </div>
 
-        <div class="mt-8 space-y-4">
-            <h3 class="text-[10px] text-gray-500 uppercase font-bold">Live Activity</h3>
-            <div class="bg-black p-4 rounded-2xl border border-white/10 h-48 overflow-y-auto font-mono text-[10px] text-gray-400 space-y-1" id="log-stream">
-                <div>[SYSTEM] Log stream initialized...</div>
-            </div>
+        <h3 class="text-sm font-bold uppercase tracking-widest text-white/40 mb-4">Live Activity</h3>
+        <div id="logStream" class="bg-black/50 p-4 rounded-2xl font-mono text-[10px] h-48 overflow-y-auto space-y-1 text-green-400/70">
+            <div>[System] Analytics initialized.</div>
         </div>
     </div>
 
-    <!-- Bottom Navigation -->
-    <nav class="bottom-nav fixed bottom-0 left-0 right-0 h-20 px-6 flex justify-between items-center z-50">
-        <button onclick="showTab('health')" class="nav-item flex flex-col items-center gap-1 active" id="btn-health">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"></path></svg>
+    <!-- BOTTOM NAV -->
+    <nav class="fixed bottom-0 left-0 right-0 h-20 bottom-nav flex items-center justify-around px-2 z-50">
+        <button onclick="showTab('health')" class="tab-btn active flex flex-col items-center gap-1 transition-all" id="btn-health">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"/></svg>
             <span class="text-[10px] font-bold uppercase">Health</span>
         </button>
-        <button onclick="showTab('safety')" class="nav-item flex flex-col items-center gap-1" id="btn-safety">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M12 15v2m-6 4h12a2 2 0 002-2v-6a2 2 0 00-2-2H6a2 2 0 00-2 2v6a2 2 0 002 2zm10-10V7a4 4 0 00-8 0v4h8z"></path></svg>
+        <button onclick="showTab('safety')" class="tab-btn flex flex-col items-center gap-1 transition-all text-white/40" id="btn-safety">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 12l2 2 4-4m5.618-4.016A11.955 11.955 0 0112 2.944a11.955 11.955 0 01-8.618 3.04A12.02 12.02 0 003 9c0 5.591 3.824 10.29 9 11.622 5.176-1.332 9-6.03 9-11.622 0-1.042-.133-2.052-.382-3.016z"/></svg>
             <span class="text-[10px] font-bold uppercase">Safety</span>
         </button>
-        <button onclick="showTab('commands')" class="nav-item flex flex-col items-center gap-1" id="btn-commands">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-            <span class="text-[10px] font-bold uppercase">Search</span>
+        <button onclick="showTab('commands')" class="tab-btn flex flex-col items-center gap-1 transition-all text-white/40" id="btn-commands">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"/></svg>
+            <span class="text-[10px] font-bold uppercase">Library</span>
         </button>
-        <button onclick="showTab('stats')" class="nav-item flex flex-col items-center gap-1" id="btn-stats">
-            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"></path></svg>
-            <span class="text-[10px] font-bold uppercase">Stats</span>
+        <button onclick="showTab('stats')" class="tab-btn flex flex-col items-center gap-1 transition-all text-white/40" id="btn-stats">
+            <svg class="w-6 h-6" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M9 19v-6a2 2 0 00-2-2H5a2 2 0 00-2 2v6a2 2 0 002 2h2a2 2 0 002-2zm0 0V9a2 2 0 012-2h2a2 2 0 012 2v10m-6 0a2 2 0 002 2h2a2 2 0 002-2m0 0V5a2 2 0 012-2h2a2 2 0 012 2v14a2 2 0 01-2 2h-2a2 2 0 01-2-2z"/></svg>
+            <span class="text-[10px] font-bold uppercase">History</span>
         </button>
     </nav>
 
@@ -144,27 +141,38 @@
         const socket = io();
         let allCommands = [];
 
-        function showTab(id) {
+        function showTab(tabId) {
             document.querySelectorAll('.tab-content').forEach(t => t.classList.remove('active'));
-            document.querySelectorAll('.nav-item').forEach(n => n.classList.remove('active'));
-            document.getElementById(id).classList.add('active');
-            document.getElementById('btn-' + id).classList.add('active');
+            document.getElementById(tabId).classList.add('active');
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.add('text-white/40'));
+            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
+            document.getElementById('btn-'+tabId).classList.add('active');
+            document.getElementById('btn-'+tabId).classList.remove('text-white/40');
+            window.scrollTo(0, 0);
         }
 
-        async function init() {
-            const status = await fetch('/api/status').then(r => r.json());
-            document.getElementById('bot-name').value = status.botName;
-            document.getElementById('bot-prefix').value = status.prefix;
-            document.getElementById('owner-num').innerText = status.owner;
-            document.getElementById('bot-image').value = status.thumbnail;
+        async function loadStatus() {
+            const res = await fetch('/api/status');
+            const data = await res.json();
+            document.getElementById('ownerNum').innerText = '+' + data.owner;
+            document.getElementById('pingMs').innerText = data.ram + ' RAM';
+            document.getElementById('botNameInput').value = data.botName;
+            document.getElementById('prefixInput').value = data.prefix;
+            document.getElementById('thumbInput').value = data.thumbnail;
+            document.getElementById('headerThumb').src = data.thumbnail;
+            document.getElementById('botStatus').innerText = data.status.toUpperCase();
+            document.getElementById('botStatus').className = `text-[10px] uppercase tracking-widest font-semibold ${data.status === 'online' ? 'text-green-400' : 'text-yellow-400'}`;
+        }
 
-            const features = await fetch('/api/features').then(r => r.json());
-            const list = document.getElementById('feature-list');
-            list.innerHTML = features.map(f => `
-                <div class="glass-card p-4 flex justify-between items-center">
+        async function loadFeatures() {
+            const res = await fetch('/api/features');
+            const data = await res.json();
+            const list = document.getElementById('featureList');
+            list.innerHTML = data.map(f => `
+                <div class="glass p-5 rounded-3xl flex justify-between items-center">
                     <div>
                         <p class="font-bold text-sm">${f.name}</p>
-                        <p class="text-[10px] text-gray-500 uppercase">${f.category}</p>
+                        <p class="text-[10px] text-white/40 uppercase font-bold tracking-tighter">${f.category}</p>
                     </div>
                     <label class="switch">
                         <input type="checkbox" ${f.status ? 'checked' : ''} onchange="toggleFeature('${f.category}', '${f.id}', this.checked)">
@@ -172,69 +180,85 @@
                     </label>
                 </div>
             `).join('');
-
-            allCommands = await fetch('/api/commands').then(r => r.json());
-            renderCmds(allCommands);
-
-            const stats = await fetch('/api/analytics').then(r => r.json());
-            document.getElementById('total-exec').innerText = stats.totalExecuted;
-            document.getElementById('popular-cmds').innerHTML = stats.mostUsed.map(c => `
-                <div class="flex justify-between text-xs p-2 bg-white/5 rounded-lg">
-                    <span class="text-gray-300">!${c.name}</span>
-                    <span class="font-bold text-[#9747FF]">${c.count} hits</span>
-                </div>
-            `).join('');
         }
 
-        function renderCmds(cmds) {
-            const list = document.getElementById('command-list');
+        async function loadCommands() {
+            const res = await fetch('/api/commands');
+            allCommands = await res.json();
+            renderCommands(allCommands);
+        }
+
+        function renderCommands(cmds) {
+            const list = document.getElementById('cmdList');
             list.innerHTML = cmds.map(c => `
-                <div class="glass-card p-4">
+                <div class="glass p-5 rounded-3xl">
                     <div class="flex justify-between items-start mb-2">
-                        <span class="text-[#9747FF] font-black">!${c.name}</span>
-                        <span class="text-[8px] bg-white/10 px-2 py-0.5 rounded-full uppercase">${c.category}</span>
+                        <p class="font-bold text-[#9747FF] text-base">!${c.name}</p>
+                        <span class="bg-white/5 px-2 py-0.5 rounded-lg text-[9px] uppercase font-black text-white/40">${c.category}</span>
                     </div>
-                    <p class="text-[10px] text-gray-400 mb-2">${c.description}</p>
-                    <p class="text-[8px] text-gray-600 font-mono">Aliases: ${c.aliases.join(', ') || 'None'}</p>
+                    <p class="text-xs text-white/60 leading-relaxed mb-3">${c.description}</p>
+                    <p class="text-[9px] font-mono text-white/30 truncate">Aliases: ${c.aliases.join(', ') || 'None'}</p>
                 </div>
             `).join('');
         }
 
-        function searchCmds() {
-            const query = document.getElementById('cmd-search').value.toLowerCase();
-            const filtered = allCommands.filter(c => c.name.includes(query) || c.description.toLowerCase().includes(query));
-            renderCmds(filtered);
+        function filterCommands() {
+            const q = document.getElementById('cmdSearch').value.toLowerCase();
+            const filtered = allCommands.filter(c => c.name.includes(q) || c.category.includes(q) || c.description.toLowerCase().includes(q));
+            renderCommands(filtered);
+        }
+
+        async function loadAnalytics() {
+            const res = await fetch('/api/analytics');
+            const data = await res.json();
+            document.getElementById('totalExec').innerText = data.totalExecuted.toLocaleString();
+            document.getElementById('failedCount').innerText = data.failed.toLocaleString();
+            
+            const top = document.getElementById('topCommands');
+            top.innerHTML = data.mostUsed.map((m, i) => `
+                <div class="glass p-3 rounded-2xl flex justify-between items-center">
+                    <span class="text-xs font-bold">#${i+1} !${m.name}</span>
+                    <span class="text-[10px] font-black text-[#9747FF]">${m.count} uses</span>
+                </div>
+            `).join('');
         }
 
         async function toggleFeature(category, id, status) {
             await fetch('/api/toggle-feature', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ category, id, status })
             });
         }
 
         async function updateConfig() {
-            const name = document.getElementById('bot-name').value;
-            const prefix = document.getElementById('bot-prefix').value;
-            const thumbnail = document.getElementById('bot-image').value;
+            const name = document.getElementById('botNameInput').value;
+            const prefix = document.getElementById('prefixInput').value;
+            const thumbnail = document.getElementById('thumbInput').value;
+            
             await fetch('/api/update-config', {
                 method: 'POST',
-                headers: {'Content-Type': 'application/json'},
+                headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ name, prefix, thumbnail })
             });
             alert('Settings saved!');
+            location.reload();
         }
 
-        socket.on('telemetry', data => {
-            const log = document.getElementById('log-stream');
+        socket.on('telemetry', (data) => {
+            const log = document.getElementById('logStream');
             const div = document.createElement('div');
-            div.innerText = `[LOG] ${new Date().toLocaleTimeString()} | RAM: ${data.ram}MB | Uptime: ${data.uptime}s`;
+            div.innerText = `[${new Date().toLocaleTimeString()}] RAM: ${data.ram}MB | CPU: ${data.cpu}% | OK: ${data.connected}`;
             log.prepend(div);
             if (log.children.length > 50) log.lastChild.remove();
         });
 
-        init();
+        // Init
+        loadStatus();
+        loadFeatures();
+        loadCommands();
+        loadAnalytics();
+        setInterval(loadAnalytics, 5000);
     </script>
 </body>
 </html>

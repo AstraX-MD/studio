@@ -164,10 +164,6 @@ class Client {
   async sendMessage(jid, content, options = {}) {
     return await this.sock.sendMessage(jid, content, options);
   }
-
-  async getPairingCode(phoneNumber) {
-    return await this.sock.requestPairingCode(phoneNumber);
-  }
 }
 
 export default Client;
