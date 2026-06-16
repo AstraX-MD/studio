@@ -1,9 +1,9 @@
 /**
- * @fileOverview Executes command logic and handles analytics for the Master Dashboard.
- * v1.2.5: Removed intrusive cooldown messages. SILENT MODE.
+ * @fileOverview Executes command logic and tracks analytics.
  */
 import PermissionMiddleware from '../middleware/PermissionMiddleware.js';
 import CooldownManager from '../managers/CooldownManager.js';
+import { logger } from '../core/logger.js';
 
 class CommandHandler {
   constructor(bot) {
@@ -12,39 +12,40 @@ class CommandHandler {
   }
 
   async execute(command, ctx, args) {
+    const senderId = ctx.sender.split('@')[0];
+    
     try {
       // 1. Permission Validation
       const isAllowed = await PermissionMiddleware.validate(this.bot, command, ctx);
       if (!isAllowed) return;
 
-      // 2. Cooldown Validation (Silent for UX)
+      // 2. Cooldown
       const remaining = this.cooldownManager.getRemainingCooldown(
         ctx.sender, 
         command.name, 
         (command.cooldown || 1) * 1000
       );
-
-      // SILENT COOLDOWN: No reply sent
       if (remaining) return;
 
-      // 3. Track Usage for Dashboard (Persistence)
+      // 3. Track Usage
       const currentUsage = await this.bot.db.get('command_usage', command.name) || 0;
       await this.bot.db.set('command_usage', command.name, currentUsage + 1);
 
       // 4. Execution
       if (typeof command.execute === 'function') {
         await command.execute(ctx, args);
+        logger.executed(command.name, senderId, true);
       } else {
-        throw new Error('Command logic missing execute().');
+        throw new Error('Logic missing execute()');
       }
       
     } catch (error) {
-      console.log(`\x1b[31m==> ERROR: [${command.name}] failed: ${error.message}\x1b[0m`);
+      logger.error('CMD', `[${command.name}] failed: ${error.message}`);
       
       const failedCount = await this.bot.db.get('stats', 'failed_count') || 0;
       await this.bot.db.set('stats', 'failed_count', failedCount + 1);
+      logger.executed(command.name, senderId, false);
 
-      // Simple Error Reply
       await ctx.reply(`┌──⌈ ⚠️ ERROR ⌋\n┃ \n┃ Command failed.\n┃ Reason: ${error.message}\n└────────────────`);
     }
   }

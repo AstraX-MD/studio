@@ -1,10 +1,10 @@
 /**
  * @fileOverview AstraX High-Speed Message Router.
- * v1.2.5: Zero fromMe restrictions. Professional Colored Logs.
- * FIXED: Absolute null-safety for sender detection.
+ * v1.2.5: Zero fromMe restrictions. 100% Self-Response.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
+import { logger } from '../core/logger.js';
 
 class MessageHandler {
   constructor(bot) {
@@ -13,19 +13,14 @@ class MessageHandler {
   }
 
   async handle(msg) {
-    // 1. Basic Safety & System Event Guard
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
 
     const ctx = new Context(this.bot, msg);
-    
-    // SAFE SENDER DETECTION
     if (!ctx.sender) return; 
 
     const senderId = ctx.sender.split('@')[0];
-    const chatType = ctx.isGroup ? '\x1b[35m[GROUP]\x1b[0m' : '\x1b[34m[PRIVATE]\x1b[0m';
+    const prefix = await this.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
     
-    // 2. Command Resolution
-    const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
     let isCommand = false;
     let commandName = '';
     let args = [];
@@ -37,17 +32,16 @@ class MessageHandler {
       commandName = args.shift().toLowerCase();
     }
 
-    // 3. Colored Expert Logging (Simple English)
-    const label = isCommand ? '\x1b[32m[COMMAND]\x1b[0m' : '\x1b[36m[MESSAGE]\x1b[0m';
-    const cleanContent = ctx.text ? ctx.text.substring(0, 50).replace(/\n/g, ' ') : '[Media]';
-    
-    console.log(`${label} ${chatType} @${senderId} | ${cleanContent}${ctx.text?.length > 50 ? '...' : ''}`);
+    // LOG TO TERMINAL
+    logger.incoming(
+      ctx.isGroup ? `GROUP[${ctx.jid.split('@')[0]}]` : 'PRIVATE',
+      senderId,
+      isCommand ? commandName : null
+    );
 
-    // 4. Recursive Loop Guard
-    // Allow the bot to hear commands but ignore its own structured results
+    // BOX GUARD: Ignore its own reports to prevent loops
     if (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌')) return;
 
-    // 5. Execution (Zero fromMe Check)
     if (isCommand && commandName) {
       const command = this.bot.commands.get(commandName);
       if (command) {

@@ -1,5 +1,5 @@
 /**
- * @fileOverview AstraX Orchestrator with Dashboard Manifest Provider.
+ * @fileOverview AstraX Orchestrator with Master Dashboard API.
  */
 import Client from './Client.js';
 import CommandLoader from '../loaders/CommandLoader.js';
@@ -12,6 +12,7 @@ import RoleManager from '../managers/RoleManager.js';
 import SettingsManager from '../managers/SettingsManager.js';
 import MemoryManager from '../managers/MemoryManager.js';
 import config from '../configs/default.js';
+import { logger } from './logger.js';
 
 class Bot {
   constructor() {
@@ -40,13 +41,17 @@ class Bot {
   }
 
   async init() {
-    console.log(`\n\x1b[36m┌──⌈ 🌌 ASTRAX ⌋\x1b[0m`);
-    console.log(`\x1b[36m┃ Version: 1.2.5\x1b[0m`);
-    console.log(`\x1b[36m┃ Status: Starting...\x1b[0m`);
-    console.log(`\x1b[36m└─────────────────────────\x1b[0m`);
+    logger.banner(
+      this.config.name, 
+      this.config.prefix, 
+      this.config.owners[0] || 'Not Set', 
+      this.db.activeProviderName,
+      '6.7.22'
+    );
     
     try {
       await this.db.init();
+      logger.success('CORE', 'Database connected.');
 
       await CommandLoader.load(this);
       await EventLoader.load(this);
@@ -55,22 +60,15 @@ class Bot {
       await this.client.connect();
       
       this.isReady = true;
+      logger.ramStats();
       
-      const prefix = await this.managers.settings.get('core', 'prefix') || '!';
-      const uniqueCount = new Set(this.commands.values()).size;
-
-      console.log(`\n\x1b[32m┌──⌈ ✅ SYSTEM READY ⌋\x1b[0m`);
-      console.log(`\x1b[32m┃ Prefix: [ ${prefix} ]\x1b[0m`);
-      console.log(`\x1b[32m┃ Commands: ${uniqueCount} Modules\x1b[0m`);
-      console.log(`\x1b[32m┃ Status: Listening...\x1b[0m`);
-      console.log(`\x1b[32m└─────────────────────\x1b[0m\n`);
     } catch (error) {
-      console.log(`\n\x1b[31m==> ERROR: Startup failed: ${error.message}\x1b[0m\n`);
+      logger.error('BOOT', `Startup failed: ${error.message}`);
     }
   }
 
   /**
-   * Provides data for Tab 3 (Explorer) and Tab 4 (Analytics)
+   * Provides data for Dashboard
    */
   getCommandManifest() {
     const manifest = [];
