@@ -1,42 +1,52 @@
 /**
- * @fileOverview Detects and logs message edits.
- * v1.2.5: Logs routed directly to Owner Private DM.
+ * @fileOverview Anti-Edit: Simple English reports for Owner DM.
  */
 export default {
   name: 'messages.update',
-  description: 'Detect message edits and log to Owner DM',
+  description: 'Track and report edited messages',
   enabled: true,
   async execute(bot, updates) {
-    // Enabled by default for AstraX Enterprise
-    const config = await bot.db.get('security', 'antiedit:config') || { mode: 'on' };
-    if (config.mode === 'off') return;
+    const ownerJid = bot.config.owners[0] + '@s.whatsapp.net';
 
     for (const update of updates) {
-      // 68 is editedMessage stub type in some versions, or check editedMessage property
-      if (update.update.messageStubType === 68 || update.update.editedMessage || update.update.message) {
-        const jid = update.key.remoteJid;
+      if (update.update.message) {
+        const key = update.key;
+        const jid = key.remoteJid;
         if (jid === 'status@broadcast') continue;
-        
-        const isGroup = jid.endsWith('@g.us');
-        const ownerJid = bot.config.owners[0] + '@s.whatsapp.net';
-        const sender = update.key.participant || jid;
 
-        console.log(`==> WARDEN: Anti-Edit event detected in ${jid}`);
+        try {
+          // Load original from store
+          const oldMsg = await bot.client.store.loadMessage(jid, key.id);
+          if (!oldMsg) continue;
 
-        const log = `┌──⌈ 🛡️ WARDEN ALERT ⌋
-┃ Event: MESSAGE_EDITED
-┃ Target: ${isGroup ? 'Group' : 'DM'}
+          const oldText = oldMsg.message?.conversation || oldMsg.message?.extendedTextMessage?.text;
+          const newText = update.update.message?.conversation || update.update.message?.extendedTextMessage?.text || 
+                          update.update.message?.editedMessage?.message?.protocolMessage?.editedMessage?.conversation;
+
+          if (!oldText || !newText || oldText === newText) continue;
+
+          const sender = key.participant || jid;
+          console.log(`\x1b[35m[WARDEN] Message Edited by @${sender.split('@')[0]} in ${jid}\x1b[0m`);
+
+          const report = `┌──⌈ 🛡️ EDITED ⌋
+┃ 
 ┃ User: @${sender.split('@')[0]}
-┃ Origin: ${jid.split('@')[0]}
-┃
-├─⊷ Status: LOGGED
+┃ Chat: ${jid.split('@')[0]}
+┃ 
+├─⌈ OLD MESSAGE ⌋
+┃ "${oldText}"
+┃ 
+├─⌈ NEW MESSAGE ⌋
+┃ "${newText}"
+┃ 
 └────────────────`;
 
-        // Send alert to Owner DM
-        await bot.client.sock.sendMessage(ownerJid, { 
-          text: log,
-          mentions: [sender]
-        }).catch(() => {});
+          await bot.client.sock.sendMessage(ownerJid, { 
+            text: report,
+            mentions: [sender]
+          }).catch(() => {});
+
+        } catch (e) {}
       }
     }
   }

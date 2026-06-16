@@ -1,17 +1,16 @@
 /**
- * @fileOverview Main Entry Menu (Help).
- * v1.2.5: Categorized logic with high-end boxed styling.
+ * @fileOverview Main Menu.
  */
 export default {
   name: "help",
-  aliases: ["h", "menu", "commands"],
+  aliases: ["menu", "commands"],
   category: "utility",
-  description: "Display the main command dashboard categorized by function.",
+  description: "Show all commands.",
   usage: "help",
   cooldown: 5,
   permissions: 1,
   execute: async (ctx) => {
-    const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
+    const botName = ctx.bot.config.name;
     const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
     const thumbnail = ctx.bot.config.thumbnail;
 
@@ -33,22 +32,19 @@ export default {
     let output = `┌──⌈ ${botName.toUpperCase()} ⌋
 ┃ User: ${ctx.pushName}
 ┃ Prefix: [ ${prefix} ]
-┃ Status: ACTIVE_24/7
-┃ Modules: ${uniqueCommands.length}
-┃\n`;
+┃ Modules: ${uniqueCount}
+┃ 
+`;
 
-    // Professional Categorization
-    const displayCats = ['admin', 'ai-chat', 'ai-image', 'economy', 'downloaders', 'logos', 'reactions', 'tools', 'security', 'utility'];
+    const displayOrder = ['admin', 'ai-chat', 'ai-image', 'economy', 'downloaders', 'logos', 'reactions', 'tools', 'security', 'utility'];
     
-    displayCats.forEach(cat => {
+    displayOrder.forEach(cat => {
       if (categories[cat]) {
-        output += `├─⌈ ${cat.toUpperCase()} ⌋\n`;
-        output += `┃ ${categories[cat].map(n => prefix + n).join(', ')}\n┃\n`;
+        output += `├─⌈ ${cat.toUpperCase()} ⌋\n┃ ${categories[cat].map(n => prefix + n).join(', ')}\n┃\n`;
       }
     });
 
-    output += `└─ 🌌 ${botName.toUpperCase()} Enterprise
-   Use ${prefix}allmenu for directory.`;
+    output += `└─ AstraX System`;
 
     await ctx.sock.sendMessage(ctx.jid, { 
       image: { url: thumbnail },

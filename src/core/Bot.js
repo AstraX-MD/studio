@@ -1,6 +1,5 @@
 /**
- * @fileOverview The main orchestrator for the AstraX framework.
- * v1.2.5-EXPERT: Optimized for absolute stability and expert telemetry.
+ * @fileOverview AstraX Orchestrator.
  */
 import Client from './Client.js';
 import CommandLoader from '../loaders/CommandLoader.js';
@@ -41,10 +40,10 @@ class Bot {
   }
 
   async init() {
-    console.log(`\n┌──⌈ 🌌 ASTRAX ENTERPRISE ⌋`);
-    console.log(`┃ Version: 1.2.5-STABLE`);
-    console.log(`┃ Status: INITIALIZING...`);
-    console.log(`└─────────────────────────`);
+    console.log(`\n\x1b[36m┌──⌈ 🌌 ASTRAX ⌋\x1b[0m`);
+    console.log(`\x1b[36m┃ Version: 1.2.5\x1b[0m`);
+    console.log(`\x1b[36m┃ Status: Starting...\x1b[0m`);
+    console.log(`\x1b[36m└─────────────────────────\x1b[0m`);
     
     try {
       await this.db.init();
@@ -59,23 +58,20 @@ class Bot {
       
       const prefix = await this.managers.settings.get('core', 'prefix') || '!';
       const uniqueCount = new Set(this.commands.values()).size;
-      const triggerCount = this.commands.size;
 
-      console.log(`\n┌──⌈ ⚙️ SYSTEM READY ⌋`);
-      console.log(`┃ Prefix: [ ${prefix} ]`);
-      console.log(`┃ Unique Logic: ${uniqueCount} Modules`);
-      console.log(`┃ Active Triggers: ${triggerCount} (inc. Aliases)`);
-      console.log(`┃ Status: LISTENING...`);
-      console.log(`└─────────────────────\n`);
+      console.log(`\n\x1b[32m┌──⌈ ✅ SYSTEM READY ⌋\x1b[0m`);
+      console.log(`\x1b[32m┃ Prefix: [ ${prefix} ]\x1b[0m`);
+      console.log(`\x1b[32m┃ Commands: ${uniqueCount} Modules\x1b[0m`);
+      console.log(`\x1b[32m┃ Status: Listening...\x1b[0m`);
+      console.log(`\x1b[32m└─────────────────────\x1b[0m\n`);
     } catch (error) {
-      console.log(`\n==> CRITICAL: Boot sequence failed: ${error.message}\n`);
+      console.log(`\n\x1b[31m==> ERROR: Startup failed: ${error.message}\x1b[0m\n`);
     }
   }
 
   getCommandManifest() {
     const manifest = [];
     const seen = new Set();
-    
     for (const cmd of this.commands.values()) {
       if (seen.has(cmd.name)) continue;
       seen.add(cmd.name);
