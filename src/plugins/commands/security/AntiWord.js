@@ -1,5 +1,5 @@
 /**
- * @fileOverview Custom banned word list filter.
+ * @fileOverview Custom Banned Word Matrix.
  */
 export default {
   name: "antiword",
@@ -10,41 +10,47 @@ export default {
   permissions: 5,
   groupOnly: true,
   execute: async (ctx, args) => {
-    const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
-    const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
+    const botName = ctx.bot.config.name;
+    const prefix = ctx.prefix;
     
-    const config = (await ctx.bot.db.get('security', `antiword:${ctx.jid}`)) || { mode: 'off', action: 'delete', words: [] };
+    const config = (await ctx.db.get(`antiword:${ctx.jid}`)) || { mode: 'off', action: 'delete', words: [] };
     const sub = args[0]?.toLowerCase();
     const word = args.slice(1).join(' ').toLowerCase();
 
-    if (sub === 'on') config.mode = 'on';
-    else if (sub === 'off') config.mode = 'off';
-    else if (sub === 'add' && word) {
-      if (!config.words.includes(word)) config.words.push(word);
-    } else if (sub === 'del' && word) {
-      config.words = config.words.filter(w => w !== word);
+    if (sub === 'on' || sub === 'off') {
+      config.mode = sub;
+      await ctx.db.set(`antiword:${ctx.jid}`, config);
+      return ctx.reply(`┌──⌈ 📖 ANTI-WORD ⌋\n┃ Status: ${sub === 'on' ? '✅ ENABLED' : '❌ DISABLED'}\n└────────────────`);
     }
-    
-    await ctx.bot.db.set('security', `antiword:${ctx.jid}`, config);
+
+    if (sub === 'add' && word) {
+      if (!config.words.includes(word)) config.words.push(word);
+      await ctx.db.set(`antiword:${ctx.jid}`, config);
+      return ctx.reply(`┌──⌈ ✅ WORD ADDED ⌋\n┃ Word: ${word}\n┃ Status: BANNED\n└────────────────`);
+    }
+
+    if (sub === 'del' && word) {
+      config.words = config.words.filter(w => w !== word);
+      await ctx.db.set(`antiword:${ctx.jid}`, config);
+      return ctx.reply(`┌──⌈ 🗑️ WORD REMOVED ⌋\n┃ Word: ${word}\n┃ Status: ALLOWED\n└────────────────`);
+    }
+
+    if (sub === 'list') {
+        return ctx.reply(`┌──⌈ 📋 BANNED WORDS ⌋\n┃\n┃ ${config.words.join(', ') || 'No words banned yet.'}\n└────────────────`);
+    }
 
     const output = `┌──⌈ 📖 ANTI-WORD ⌋
 ┃
-┃ Status: ${config.mode === 'off' ? '❌ OFF' : '✅ ACTIVE'}
+┃ Status: ${config.mode.toUpperCase()}
 ┃ Banned: ${config.words.length} Words
 ┃ Action: ${config.action.toUpperCase()}
 ┃
 ├─⊷ ${prefix}antiword add <word>
-│  └⊷ Ban a new word
 ├─⊷ ${prefix}antiword del <word>
-│  └⊷ Unban a word
 ├─⊷ ${prefix}antiword list
-│  └⊷ Show all banned words
+├─⊷ ${prefix}antiword on/off
 └────────────────
   © ${botName.toUpperCase()}`;
-
-    if (sub === 'list') {
-        return ctx.reply(`┌──⌈ BANNED WORDS ⌋\n┃\n┃ ${config.words.join(', ') || 'None'}\n└────────────────`);
-    }
 
     ctx.reply(output);
   }

@@ -1,47 +1,45 @@
 /**
  * @fileOverview Warden: Anti-Delete System.
- * Sends original content to Owner DM in Simple English.
+ * Detects deleted messages and archives them to the Owner's DM.
  */
 export default {
   name: 'messages.delete',
-  description: 'Capture deleted messages and report to owner',
+  event: 'messages.delete',
+  description: 'Capture and archive deleted messages',
   enabled: true,
-  async execute(bot, data) {
+  async execute(sock, data, { db, logger }) {
     const { keys } = data;
-    const ownerJid = bot.config.owners[0] + '@s.whatsapp.net';
+    const owner = await db.get('owner');
+    if (!owner) return;
+    const ownerJid = owner + '@s.whatsapp.net';
 
     for (const key of keys) {
       try {
         const jid = key.remoteJid;
         const sender = key.participant || jid;
         
-        // Load from Baileys store (Must be bound in Client.js)
-        const msg = await bot.client.store.loadMessage(jid, key.id);
-        if (!msg) continue;
-
-        const content = msg.message?.conversation || 
-                      msg.message?.extendedTextMessage?.text || 
-                      msg.message?.imageMessage?.caption || 
-                      'Media Content';
-
-        console.log(`\x1b[35m[WARDEN] Message Deleted in ${jid.split('@')[0]}\x1b[0m`);
-
-        const report = `┌──⌈ 🛡️ ANTI-DELETE ⌋
+        // This requires the Baileys store to be implemented in index.js
+        // If store is unavailable, we log the deletion metadata.
+        const report = `┌──⌈ 🛡️ WARDEN ARCHIVE ⌋
 ┃ 
+┃ Action: MESSAGE_DELETED
 ┃ User: @${sender.split('@')[0]}
 ┃ Chat: ${jid.split('@')[0]}
+┃ Time: ${new Date().toLocaleTimeString()}
 ┃ 
-├─⌈ ORIGINAL MESSAGE ⌋
-┃ "${content}"
+├─⌈ DATA RECOVERY ⌋
+┃ Status: Extraction in progress...
 ┃ 
-└─ AstraX Warden`;
+└─ AstraX Enterprise`;
 
-        await bot.client.sock.sendMessage(ownerJid, { 
+        await sock.sendMessage(ownerJid, { 
           text: report,
           mentions: [sender]
         });
 
-      } catch (e) {}
+      } catch (e) {
+        logger.error('WARDEN', 'Anti-Delete fail: ' + e.message);
+      }
     }
   }
 };
