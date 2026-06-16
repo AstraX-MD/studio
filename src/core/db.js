@@ -16,8 +16,7 @@ export const DEFAULTS = {
   autoRead: false,
   autoTyping: false,
   autoRecording: false,
-  antiDelete: true,
-  antiEdit: true,
+  antiLink: false,
   disabledCmds: []
 }
 

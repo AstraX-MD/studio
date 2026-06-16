@@ -4,9 +4,6 @@
  * Simple English, Mobile-First, Performance Stats
  */
 
-import os from 'os'
-import { commands } from '../../../core/loader.js'
-
 export default {
   name: "menu",
   aliases: ["help", "commands"],
@@ -27,14 +24,10 @@ export default {
     const barCount = Math.floor(percent / 10)
     const ramBar = '■'.repeat(barCount) + '□'.repeat(10 - barCount)
 
-    // Group commands by category
-    const categories = {}
-    const uniqueCommands = new Set()
+    const uniqueCommands = new Set(ctx.bot.commands.values());
+    const categories = {};
     
-    commands.forEach((cmd) => {
-      if (uniqueCommands.has(cmd.name)) return
-      uniqueCommands.add(cmd.name)
-      
+    uniqueCommands.forEach((cmd) => {
       const cat = cmd.category || 'misc'
       if (!categories[cat]) categories[cat] = []
       categories[cat].push(cmd.name)
@@ -57,7 +50,6 @@ export default {
 ┃ 🛠️ Tools: ${totalCmds} Modules
 ┃\n`
 
-    // Display Categories and Commands
     const sortedCats = Object.keys(categories).sort()
     sortedCats.forEach(cat => {
       menu += `├─⌈ ${cat.toUpperCase()} ⌋\n`

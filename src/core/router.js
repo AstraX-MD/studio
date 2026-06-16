@@ -1,18 +1,24 @@
 /**
- * AstraX - router.js
- * 19-Way Owner Check & Zero-Restriction Routing.
+ * AstraX - system/router.js
+ * Message routing engine — Prefix logic, channel context, permissions
+ * All settings real-time from DB — no restart needed
+ * OWNER = PAIRING CODE NUMBER ONLY - NO SENDER CHECK
  */
 
 import { db } from './db.js'
 import { logger } from './logger.js'
+import { fonts } from './fonts.js'
 
 let commands = new Map()
 let observers = new Map()
 
-export function setCommands(cmds) { commands = cmds }
-export function setObservers(obs) { observers = obs }
+export function setCommands(cmds) {
+  commands = cmds
+}
 
-const REACT_KEYS = ['✅','❤️','🔥','💯','👍','😂','😍','🤔','👏','💀','⚡','✨','🌟','🎯','🚀','💎','👑','🌈','🎉','💪','🙏','😎','🥳','🤩','😇','🤗','😘','🤫','🤐','🤑','🤠','👻','👽','🤖','😺','🐶','🦁','🐯','🦄','🐸','🍕','🍔','🍟','🌮','🍩','🍪','🍭','🍯','🧃','☕']
+export function setObservers(obs) {
+  observers = obs
+}
 
 export function getCommand(name) {
   const key = name.toLowerCase()
@@ -23,8 +29,9 @@ export function getCommand(name) {
   return null
 }
 
+const REACT_KEYS = ['✅','❤️','🔥','💯','👍','😂','😍','🤔','👏','💀','⚡','✨','🌟','🎯','🚀','💎','👑','🌈','🎉','💪','🙏','😎','🥳','🤩','😇','🤗','😘','🤫','🤐','🤑','🤠','👻','👽','🤖','😺','🐶','🦁','🐯','🦄','🐸','🍕','🍔','🍟','🌮','🍩','🍪','🍭','🍯','🧃','☕']
+
 async function checkPermission(sock, m, cmd) {
-  const from = m.key.remoteJid
   const owner = await db.get('owner')
   if (!owner) return { error: 'Bot owner not configured.' }
 
@@ -45,10 +52,10 @@ async function checkPermission(sock, m, cmd) {
   
   if (cmd.permissions >= 9 && !isOwnerBot) return { error: 'Owner only command.' }
 
-  if (cmd.permissions >= 5 && from.endsWith('@g.us')) {
-    const sender = m.key.participant || from
+  if (cmd.permissions >= 5 && m.key.remoteJid.endsWith('@g.us')) {
+    const sender = m.key.participant || m.key.remoteJid
     try {
-      const metadata = await sock.groupMetadata(from)
+      const metadata = await sock.groupMetadata(m.key.remoteJid)
       const admin = metadata.participants.find(p => cleanJid(p.id) === cleanJid(sender) && p.admin)
       if (!admin && !isOwnerBot) return { error: 'Admin only command.' }
     } catch { return { error: 'Verification failed.' } }
@@ -90,10 +97,9 @@ export async function routeMessage(sock, m) {
 
     const perm = await checkPermission(sock, m, cmd)
     if (perm !== true) {
-      return await sock.sendMessage(from, { text: perm.error || 'Access Denied.' }, { quoted: m })
+      return await sock.sendMessage(from, { text: `*🚫 Access Denied: ${perm.error || 'Restricted'}*` }, { quoted: m })
     }
 
-    // Auto React
     try {
       const reactKey = REACT_KEYS[Math.floor(Math.random() * REACT_KEYS.length)]
       await sock.sendMessage(from, { react: { text: reactKey, key: m.key } })
@@ -102,9 +108,10 @@ export async function routeMessage(sock, m) {
     logger.executed(cmd.name, sender.split('@')[0])
     try {
       await cmd.execute({ bot: { client: { sock }, db }, sock, msg: m, jid: from, sender, text: body, logger, pushName: m.pushName || 'User', prefix: currentPrefix, ...m }, args)
+      logger.executed(cmd.name, sender.split('@')[0], true)
     } catch (e) {
       logger.error('CMD', `${cmd.name} crashed`, e.message)
-      await sock.sendMessage(from, { text: `⚠️ Error: ${e.message}` }, { quoted: m })
+      await sock.sendMessage(from, { text: `*⚠️ Error: ${e.message}*` }, { quoted: m })
     }
   } catch (e) { logger.error('ROUTER', 'Failed', e.message) }
 }

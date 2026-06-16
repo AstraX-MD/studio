@@ -1,6 +1,8 @@
 /**
- * AstraX - loader.js
- * Recursive plugin scanner with ESM stability.
+ * AstraX - system/loader.js
+ * Auto-loads all plugins from plugins/commands and plugins/observers
+ * Zero hardcode — scans folders dynamically
+ * Hot-reload support — no restart needed for new plugins
  */
 
 import { readdirSync, existsSync } from 'fs'
@@ -13,46 +15,51 @@ import { setCommands, setObservers } from './router.js'
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
+export const commands = new Map()
+export const observers = new Map()
+export const categories = new Map()
+export const aliases = new Map()
+
 const PLUGINS_DIR = join(__dirname, '..', 'plugins')
 const COMMANDS_DIR = join(PLUGINS_DIR, 'commands')
 const OBSERVERS_DIR = join(PLUGINS_DIR, 'observers')
 
-export const commands = new Map()
-export const observers = new Map()
-export const aliases = new Map()
-export const categories = new Map()
-
-function scanFolder(dir) {
-  let files = []
+function scanFolder(dir, ext = '.js') {
+  const files = []
   if (!existsSync(dir)) return files
-  const items = readdirSync(dir, { withFileTypes: true })
-  for (const item of items) {
-    const fullPath = join(dir, item.name)
-    if (item.isDirectory()) {
-      files = [...files, ...scanFolder(fullPath)]
-    } else if (item.name.endsWith('.js')) {
-      files.push(fullPath)
+  try {
+    const items = readdirSync(dir, { withFileTypes: true })
+    for (const item of items) {
+      const fullPath = join(dir, item.name)
+      if (item.isDirectory()) {
+        files.push(...scanFolder(fullPath, ext))
+      } else if (item.isFile() && item.name.endsWith(ext)) {
+        files.push(fullPath)
+      }
     }
+  } catch (e) {
+    logger.warn('LOADER', `Failed to scan ${dir}`, e.message)
   }
   return files
 }
 
-export async function initLoader() {
+async function loadCommands() {
   commands.clear()
   aliases.clear()
-  observers.clear()
   categories.clear()
 
-  const cmdFiles = scanFolder(COMMANDS_DIR)
-  for (const file of cmdFiles) {
+  const files = scanFolder(COMMANDS_DIR)
+  for (const file of files) {
     try {
-      const fileUrl = pathToFileURL(file).href + `?t=${Date.now()}`
-      const module = await import(fileUrl)
+      const fileUrl = pathToFileURL(file).href
+      const cacheBuster = `${fileUrl}?t=${Date.now()}`
+      const module = await import(cacheBuster)
       const cmd = module.default || module
+
       if (cmd?.name && cmd?.execute) {
         const name = cmd.name.toLowerCase()
         commands.set(name, cmd)
-        
+
         const relativePath = file.replace(COMMANDS_DIR, '').replace(/^[\/\\]/, '')
         const category = relativePath.split(/[\/\\]/)[0] || 'misc'
         cmd.category = cmd.category || category
@@ -62,9 +69,9 @@ export async function initLoader() {
         }
 
         if (!categories.has(cmd.category)) {
-          categories.set(cmd.category, [])
+          categories.set(cmd.category, { name: cmd.category, commands: [] })
         }
-        categories.get(cmd.category).push(cmd.name)
+        categories.get(cmd.category).commands.push(cmd.name)
 
         logger.pluginLoaded(cmd.name, 'COMMAND', commands.size)
       }
@@ -72,11 +79,14 @@ export async function initLoader() {
       logger.error('LOADER', `Failed ${file}: ${e.message}`)
     }
   }
+}
 
-  const obsFiles = scanFolder(OBSERVERS_DIR)
-  for (const file of obsFiles) {
+async function loadObservers() {
+  observers.clear()
+  const files = scanFolder(OBSERVERS_DIR)
+  for (const file of files) {
     try {
-      const module = await import(pathToFileURL(file).href)
+      const module = await import(pathToFileURL(file).href + `?t=${Date.now()}`)
       const obs = module.default || module
       if (obs?.name && obs?.execute) {
         observers.set(obs.name.toLowerCase(), obs)
@@ -84,8 +94,16 @@ export async function initLoader() {
       }
     } catch (e) {}
   }
+}
+
+export async function initLoader() {
+  logger.info('LOADER', 'Initializing AstraX Plugin Engine...')
+  await loadCommands()
+  await loadObservers()
 
   setCommands(commands)
   setObservers(observers)
+
+  logger.success('LOADER', `AstraX Engine Loaded: ${commands.size} Cmds / ${observers.size} Obs`)
   return { commands: commands.size, observers: observers.size }
 }
