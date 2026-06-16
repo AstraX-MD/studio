@@ -9,6 +9,7 @@ export default {
   usage: "help",
   permissions: 1,
   execute: async (ctx) => {
+    const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
     const prefix = await ctx.bot.managers.settings.get('core', 'prefix', ctx.jid) || '!';
     const commands = Array.from(ctx.bot.commands.values());
     const seen = new Set();
@@ -44,7 +45,7 @@ export default {
       }
     });
 
-    output += `└─ AstraX System`;
+    output += `└─ ${botName.toUpperCase()} System`;
 
     await ctx.sock.sendMessage(ctx.jid, { 
       image: { url: ctx.bot.config.thumbnail },

@@ -1,6 +1,6 @@
 /**
  * @fileOverview AstraX High-Speed Message Router.
- * v1.2.5: Removed all fromMe restrictions. Professional Colored Logs.
+ * v1.2.5: Zero fromMe restrictions. Professional Colored Logs.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -12,7 +12,7 @@ class MessageHandler {
   }
 
   async handle(msg) {
-    // 1. Basic Safety
+    // 1. Basic Safety & Null Check
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
 
     const ctx = new Context(this.bot, msg);
@@ -34,16 +34,16 @@ class MessageHandler {
       commandName = args.shift().toLowerCase();
     }
 
-    // 3. Colored Expert Logging
+    // 3. Colored Expert Logging (Simplified English)
     const label = isCommand ? '\x1b[32m[COMMAND]\x1b[0m' : '\x1b[36m[MESSAGE]\x1b[0m';
     const cleanContent = ctx.text ? ctx.text.substring(0, 50).replace(/\n/g, ' ') : '[MEDIA]';
     
     console.log(`${label} ${chatType} @${senderId} | ${cleanContent}${ctx.text?.length > 50 ? '...' : ''}`);
 
-    // 4. Recursive Loop Guard (Ignore bot's own formatted boxed results to prevent loops)
+    // 4. Recursive Loop Guard (Ignore bot's own formatted reports to prevent loops)
     if (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌')) return;
 
-    // 5. Execution
+    // 5. Execution (Absolutely No fromMe Check)
     if (isCommand && commandName) {
       const command = this.bot.commands.get(commandName);
       if (command) {
