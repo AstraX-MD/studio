@@ -1,30 +1,22 @@
 /**
- * AstraX - system/router.js
- * Message routing engine — Prefix logic, channel context, permissions
- * All settings real-time from DB — no restart needed
- * OWNER = PAIRING CODE NUMBER ONLY - NO SENDER CHECK
+ * AstraX - src/core/router.js
+ * Elite Message Routing with 19-Way Owner Check (LID/JID).
  */
 
 import { db } from './db.js'
 import { logger } from './logger.js'
-import { fonts } from './fonts.js'
 
 let commands = new Map()
 let observers = new Map()
 
-export function setCommands(cmds) {
-  commands = cmds
-}
-
-export function setObservers(obs) {
-  observers = obs
-}
+export function setCommands(cmds) { commands = cmds }
+export function setObservers(obs) { observers = obs }
 
 export function getCommand(name) {
   const key = name.toLowerCase()
   if (commands.has(key)) return commands.get(key)
   for (const [_, cmd] of commands) {
-    if (cmd.aliases && cmd.aliases.includes(key)) return cmd
+    if (cmd.alias && cmd.alias.includes(key)) return cmd
   }
   return null
 }
@@ -39,6 +31,7 @@ async function checkPermission(sock, m, cmd) {
   const botJid = sock.user?.id || ''
   const botClean = cleanJid(botJid)
   
+  // 19-Way Owner Check purely by pairing number
   const isOwnerBot = 
     botClean === owner || 
     botJid.includes(owner) || 
@@ -50,9 +43,10 @@ async function checkPermission(sock, m, cmd) {
   const mode = await db.get('mode') || 'public'
   if (mode === 'private' && !isOwnerBot) return false
   
-  if (cmd.permissions >= 9 && !isOwnerBot) return { error: 'Owner only command.' }
+  const perm = cmd.permission || 'all'
+  if (perm === 'owner' && !isOwnerBot) return { error: 'Owner only command.' }
 
-  if (cmd.permissions >= 5 && m.key.remoteJid.endsWith('@g.us')) {
+  if (perm === 'admin' && m.key.remoteJid.endsWith('@g.us')) {
     const sender = m.key.participant || m.key.remoteJid
     try {
       const metadata = await sock.groupMetadata(m.key.remoteJid)
@@ -78,19 +72,30 @@ export async function routeMessage(sock, m) {
       try { await obs.execute(sock, m, { db, logger }) } catch (e) {}
     }
 
-    const [prefix, autoRead, autoTyping] = await Promise.all([
-      db.get('prefix'), db.get('autoRead'), db.get('autoTyping')
+    const [prefix, noPrefix, autoRead, autoTyping] = await Promise.all([
+      db.get('prefix'), db.get('noPrefix'), db.get('autoRead'), db.get('autoTyping')
     ])
 
     if (autoRead) try { await sock.readMessages([m.key]) } catch {}
     if (autoTyping) try { await sock.sendPresenceUpdate('composing', from) } catch {}
 
-    const currentPrefix = prefix || '!'
-    if (!body.startsWith(currentPrefix)) return
+    const currentPrefix = prefix || '?'
+    let isCmd = false
+    let cmdName = ''
+    let args = []
 
-    const parts = body.slice(currentPrefix.length).trim().split(/\s+/)
-    const cmdName = parts[0].toLowerCase()
-    const args = parts.slice(1)
+    if (body.startsWith(currentPrefix)) {
+      isCmd = true
+      const parts = body.slice(currentPrefix.length).trim().split(/\s+/)
+      cmdName = parts[0].toLowerCase()
+      args = parts.slice(1)
+    } else if (noPrefix) {
+      const parts = body.trim().split(/\s+/)
+      cmdName = parts[0].toLowerCase()
+      if (getCommand(cmdName)) { isCmd = true; args = parts.slice(1) }
+    }
+
+    if (!isCmd) return
 
     const cmd = getCommand(cmdName)
     if (!cmd) return
@@ -107,7 +112,7 @@ export async function routeMessage(sock, m) {
 
     logger.executed(cmd.name, sender.split('@')[0])
     try {
-      await cmd.execute({ bot: { client: { sock }, db }, sock, msg: m, jid: from, sender, text: body, logger, pushName: m.pushName || 'User', prefix: currentPrefix, ...m }, args)
+      await cmd.execute(sock, m, args, { db, logger, prefix: currentPrefix, cmdName, from, sender })
       logger.executed(cmd.name, sender.split('@')[0], true)
     } catch (e) {
       logger.error('CMD', `${cmd.name} crashed`, e.message)
@@ -118,6 +123,6 @@ export async function routeMessage(sock, m) {
 
 export async function routeEvent(sock, name, update) {
   for (const obs of observers.values()) {
-    if (obs.name === name) try { await obs.execute(sock, update, { db, logger }) } catch (e) {}
+    if (obs.event === name) try { await obs.execute(sock, update, { db, logger }) } catch (e) {}
   }
 }

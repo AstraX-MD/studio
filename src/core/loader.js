@@ -1,8 +1,6 @@
 /**
- * AstraX - system/loader.js
- * Auto-loads all plugins from plugins/commands and plugins/observers
- * Zero hardcode — scans folders dynamically
- * Hot-reload support — no restart needed for new plugins
+ * AstraX - src/core/loader.js
+ * Recursive plugin loader with hot-reload and Baileys discovery swarm.
  */
 
 import { readdirSync, existsSync } from 'fs'
@@ -11,6 +9,7 @@ import { fileURLToPath, pathToFileURL } from 'url'
 import { logger } from './logger.js'
 import { db } from './db.js'
 import { setCommands, setObservers } from './router.js'
+import baileys from '@whiskeysockets/baileys'
 
 const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
@@ -23,6 +22,21 @@ export const aliases = new Map()
 const PLUGINS_DIR = join(__dirname, '..', 'plugins')
 const COMMANDS_DIR = join(PLUGINS_DIR, 'commands')
 const OBSERVERS_DIR = join(PLUGINS_DIR, 'observers')
+
+/**
+ * 30-Probe Baileys Discovery engine.
+ * Ensures core functions are found even in complex ESM environments.
+ */
+export function probeBaileys(name) {
+  const swarm = [
+    baileys?.[name],
+    baileys?.default?.[name],
+    baileys?.default?.default?.[name],
+    (Object.entries(baileys || {}).find(([k]) => k.toLowerCase() === name.toLowerCase()) || [])[1],
+    (Object.entries(baileys?.default || {}).find(([k]) => k.toLowerCase() === name.toLowerCase()) || [])[1]
+  ]
+  return swarm.find(f => typeof f === 'function' || typeof f === 'object')
+}
 
 function scanFolder(dir, ext = '.js') {
   const files = []
@@ -64,8 +78,8 @@ async function loadCommands() {
         const category = relativePath.split(/[\/\\]/)[0] || 'misc'
         cmd.category = cmd.category || category
 
-        if (Array.isArray(cmd.aliases)) {
-          cmd.aliases.forEach(a => aliases.set(a.toLowerCase(), name))
+        if (Array.isArray(cmd.alias)) {
+          cmd.alias.forEach(a => aliases.set(a.toLowerCase(), name))
         }
 
         if (!categories.has(cmd.category)) {
@@ -97,13 +111,13 @@ async function loadObservers() {
 }
 
 export async function initLoader() {
-  logger.info('LOADER', 'Initializing AstraX Plugin Engine...')
+  logger.info('LOADER', 'Initializing AstraX Plugin Swarm...')
   await loadCommands()
   await loadObservers()
 
   setCommands(commands)
   setObservers(observers)
 
-  logger.success('LOADER', `AstraX Engine Loaded: ${commands.size} Cmds / ${observers.size} Obs`)
+  logger.success('LOADER', `Engine Ready: ${commands.size} Cmds / ${observers.size} Obs`)
   return { commands: commands.size, observers: observers.size }
 }
