@@ -40,7 +40,6 @@ class MessageHandler {
     );
 
     // BOX GUARD: Ignore its own professional reports to prevent infinite feedback loops
-    // The bot will answer its own !commands, but ignore the "┌──⌈" formatted boxes.
     if (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌')) return;
 
     if (isCommand && commandName) {

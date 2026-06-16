@@ -13,7 +13,6 @@ import SettingsManager from '../managers/SettingsManager.js';
 import MemoryManager from '../managers/MemoryManager.js';
 import config from '../configs/default.js';
 import { logger } from './logger.js';
-import { initializeSystem } from './loader.js';
 
 class Bot {
   constructor() {
@@ -45,12 +44,12 @@ class Bot {
     try {
       await this.db.init();
       
-      // Use the requested system loader pattern
-      await initializeSystem(this);
+      const botname = await this.managers.settings.get('core', 'name') || this.config.name;
+      const prefix = await this.managers.settings.get('core', 'prefix') || this.config.prefix;
       
       logger.banner(
-        this.config.name, 
-        this.config.prefix, 
+        botname, 
+        prefix, 
         this.config.owners[0] || 'Not Set', 
         this.db.activeProviderName,
         '6.7.22'
