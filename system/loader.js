@@ -1,6 +1,6 @@
 /**
  * AstraX - system/loader.js
- * Recursive plugin loader with hot-reload and Baileys discovery swarm.
+ * Recursive plugin loader with hot-reload support.
  */
 
 import { readdirSync, existsSync } from 'fs'

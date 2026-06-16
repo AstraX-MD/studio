@@ -1,6 +1,6 @@
 /**
  * AstraX - system/router.js
- * Elite Message Routing with 19-Way Owner Check (LID/JID).
+ * Elite Message Routing with 19-Way Owner Check.
  */
 
 import { db } from './db.js'
@@ -31,7 +31,7 @@ async function checkPermission(sock, m, cmd) {
   const botJid = sock.user?.id || ''
   const botClean = cleanJid(botJid)
   
-  // 19-Way Owner Check
+  // 19-Way Owner Check purely by pairing number
   const isOwnerBot = 
     botClean === owner || 
     botJid.includes(owner) || 

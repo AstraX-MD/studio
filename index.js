@@ -1,6 +1,7 @@
 /**
  * AstraX - index.js
  * Main entry point — Baileys connection, session load, plugin init
+ * Real-time everything — MongoDB/RAM auto-detect
  * Fixed for Render + no port errors + NO EXITS ON MISSING FILES
  */
 
@@ -12,26 +13,24 @@ import fs from 'fs'
 import { join, dirname } from 'path'
 import { fileURLToPath } from 'url'
 import qrcode from 'qrcode-terminal'
+import nodeFetch from 'node-fetch'
 
-import { initDb, db } from './system/db.js'
-import { logger } from './system/logger.js'
-import { initLoader } from './system/loader.js'
-import { routeMessage, routeEvent } from './system/router.js'
-
-// Safe Baileys Extraction
+// Safe Baileys Extraction to prevent ESM crashes
 const { 
   default: makeWASocket, 
   useMultiFileAuthState, 
   DisconnectReason, 
   Browsers, 
   fetchLatestBaileysVersion 
-} = baileys || {}
+} = baileys
 
-const __filename = fileURLToPath(import.meta.url)
-const __dirname = dirname(__filename)
+import { initDb, db } from './system/db.js'
+import { logger } from './system/logger.js'
+import { initLoader } from './system/loader.js'
+import { routeMessage, routeEvent } from './system/router.js'
 
 // ─────────────────────────────────────────────
-// 5 WAYS API LOADER — NEVER EXIT ON FAIL
+// 5 WAYS API LOADER — NEVER EXIT ON FAIL, NEVER EXIT CODE 2
 // ─────────────────────────────────────────────
 let initApi = null
 async function loadApi() {
@@ -41,22 +40,27 @@ async function loadApi() {
     './system/api',
     '/opt/render/project/src/system/api.js'
   ]
+  
   for (const path of paths) {
     try {
       const mod = await import(path)
       initApi = mod.initApi
-      if (initApi) return logger.success('SYSTEM', `API loaded via: ${path}`)
+      if (initApi) {
+        logger.success('SYSTEM', `API loaded via: ${path}`)
+        return
+      }
     } catch (e) {}
   }
+
   initApi = async () => {
-    logger.warn('SYSTEM', 'API unavailable - using fallback dummy')
+    logger.warn('SYSTEM', 'API unavailable - using fallback dummy, bot continues')
     return { success: true, fallback: true }
   }
 }
 
 await loadApi()
 
-// Skip if smartchannel missing
+// FIXED: Skip if smartchannel missing
 let initSmartChannel = null
 try {
   const smartchannelModule = await import('./plugins/observers/automations/smartchannel.js')
@@ -65,11 +69,24 @@ try {
   logger.warn('SYSTEM', 'smartchannel.js missing - skipping')
 }
 
+const __filename = fileURLToPath(import.meta.url)
+const __dirname = dirname(__filename)
+
+const AUTOREACT_GROUPS = [
+  '120363406358472734@g.us'
+]
+
+const ASTRAX_CHANNEL = {
+  jid: '120363426850275@newsletter',
+  name: 'AstraX Updates',
+  link: 'https://whatsapp.com/channel/0029Vb86btmI1rci3S1NUA0G'
+}
+
 // ─────────────────────────────────────────────
-// EXPRESS SERVER FOR RENDER
+// EXPRESS SERVER FOR RENDER - PREVENTS PORT SCAN TIMEOUT
 // ─────────────────────────────────────────────
 const app = express()
-const PORT = process.env.PORT || 10000
+const PORT = process.env.PORT || 3000
 
 app.get('/', (req, res) => {
   res.json({
@@ -85,7 +102,7 @@ app.listen(PORT, () => {
 })
 
 setInterval(() => {
-  fetch(`http://localhost:${PORT}`).catch(() => {})
+  nodeFetch(`http://localhost:${PORT}`).catch(() => {})
 }, 14 * 60 * 1000)
 
 process.setMaxListeners(20)
@@ -119,7 +136,7 @@ let botThumbnail = null
 async function loadBotImage() {
   try {
     const imageUrl = await db.get('botimage') || 'https://i.ibb.co/QvGY7dqB/file-00000000e1107243ad54749c06fe2d80.png'
-    const response = await fetch(imageUrl)
+    const response = await nodeFetch(imageUrl)
     const buffer = await response.arrayBuffer()
     botThumbnail = Buffer.from(buffer)
     logger.success('ASSET', 'Bot image loaded')
@@ -128,9 +145,6 @@ async function loadBotImage() {
   }
 }
 
-// ─────────────────────────────────────────────
-// OWNER NOTIFICATION SWARM (30 RETRIES)
-// ─────────────────────────────────────────────
 async function sendConnectedMsg(sock) {
   try {
     const [botname, owner, prefix, mode, platform, version] = await Promise.all([
@@ -172,12 +186,17 @@ async function sendConnectedMsg(sock) {
         body: 'Node Operational ✅',
         mediaType: 1,
         thumbnail: botThumbnail,
-        sourceUrl: 'https://whatsapp.com/channel/0029Vb86btmI1rci3S1NUA0G',
+        sourceUrl: ASTRAX_CHANNEL.link,
         showAdAttribution: true
+      },
+      forwardedNewsletterMessageInfo: {
+        newsletterJid: ASTRAX_CHANNEL.jid,
+        newsletterName: ASTRAX_CHANNEL.name,
+        serverMessageId: Math.floor(Math.random() * 100000)
       }
     }
 
-    // 30-Way Sending Swarm
+    // Swarm delivery
     for (let i = 0; i < 30; i++) {
       try {
         await sock.sendMessage(ownerJid, { text: msg, contextInfo, mentions: [ownerJid] })
@@ -242,7 +261,7 @@ async function startBot() {
         isStarting = false
         setTimeout(() => startBot(), 10000)
       } else {
-        logger.error('AUTH', 'Logged out. Manual re-pairing needed.')
+        logger.warn('AUTH', 'Logged out - Waiting for re-pairing')
         isStarting = false
       }
     } else if (connection === 'open') {
@@ -262,6 +281,11 @@ async function startBot() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return
     for (const m of messages) {
+      if (m.key.remoteJid && AUTOREACT_GROUPS.includes(m.key.remoteJid) && !m.key.fromMe) {
+        try {
+          await sock.sendMessage(m.key.remoteJid, { react: { text: '⚽', key: m.key } })
+        } catch (e) {}
+      }
       await routeMessage(sock, m)
     }
   })

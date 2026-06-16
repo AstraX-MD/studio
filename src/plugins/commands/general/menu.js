@@ -1,7 +1,7 @@
 /**
  * AstraX - menu.js
  * Master Command Directory
- * Mobile-First, Performance Stats, Super Simple English
+ * High-Speed, Visual RAM, Mobile-First.
  */
 
 export default {
@@ -9,8 +9,9 @@ export default {
   aliases: ["help", "commands"],
   category: "utility",
   description: "Display the main command menu and system stats.",
-  execute: async (ctx) => {
-    const { sock, jid, msg, sender, prefix, pushName, db, logger } = ctx
+  execute: async (sock, m, args, { db, logger, prefix }) => {
+    const sender = m.key.participant || m.key.remoteJid
+    const pushName = m.pushName || 'User'
     
     // RAM Progress Bar Calculation
     const mem = process.memoryUsage()
@@ -18,16 +19,28 @@ export default {
     const barCount = Math.floor(percent / 10)
     const ramBar = '■'.repeat(barCount) + '□'.repeat(10 - barCount)
 
-    const uniqueCommands = new Set(ctx.commands?.values() || [])
-    const categories = {}
+    const categories = {
+      'admin': [],
+      'ai-chat': [],
+      'ai-image': [],
+      'ai-video': [],
+      'ai-music': [],
+      'economy': [],
+      'downloaders': [],
+      'logos': [],
+      'reactions': [],
+      'tools': [],
+      'security': [],
+      'utility': []
+    }
     
-    uniqueCommands.forEach((cmd) => {
-      const cat = cmd.category || 'misc'
-      if (!categories[cat]) categories[cat] = []
-      categories[cat].push(cmd.name)
+    // Total registered command objects
+    const commands = await import('../../../system/loader.js').then(m => m.commands)
+    commands.forEach((cmd) => {
+      const cat = cmd.category || 'utility'
+      if (categories[cat]) categories[cat].push(cmd.name)
     })
 
-    const totalCmds = uniqueCommands.size
     const time = new Date().toLocaleTimeString('en-US', { hour: '2-digit', minute: '2-digit' })
 
     let menu = `┌──⌈ 🌌 ASTRAX ⌋
@@ -38,23 +51,23 @@ export default {
 ┃ ⏱️ Time: ${time}
 ┃ 🛰️ Platform: Render
 ┃ 🔑 Prefix: [ ${prefix} ]
-┃ 👑 Owner: ROOT
-┃ 📦 Mode: ${db.mode?.toUpperCase() || 'RAM'}
+┃ 📦 Mode: ${db.mode.toUpperCase()}
 ┃ 🧠 RAM: [${ramBar}] ${percent}%
-┃ 🛠️ Tools: ${totalCmds} Modules
+┃ 🛠️ Tools: ${commands.size} Modules
 ┃\n`
 
-    const sortedCats = Object.keys(categories).sort()
-    sortedCats.forEach(cat => {
-      menu += `├─⌈ ${cat.toUpperCase()} ⌋\n`
-      menu += `┃ ${categories[cat].map(n => prefix + n).join(', ')}\n┃\n`
+    Object.keys(categories).forEach(cat => {
+      if (categories[cat].length > 0) {
+        menu += `├─⌈ ${cat.toUpperCase()} ⌋\n`
+        menu += `┃ ${categories[cat].sort().map(n => prefix + n).join(', ')}\n┃\n`
+      }
     })
 
     menu += `└─ AstraX Enterprise`
 
-    await sock.sendMessage(jid, { 
+    await sock.sendMessage(m.key.remoteJid, { 
       text: menu,
       mentions: [sender]
-    }, { quoted: msg })
+    }, { quoted: m })
   }
 }
