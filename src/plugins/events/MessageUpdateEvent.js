@@ -1,6 +1,6 @@
 /**
  * @fileOverview Warden: Anti-Edit System.
- * Sends before/after content to Owner DM in simple English.
+ * Sends before/after content to Owner DM in Simple English.
  */
 export default {
   name: 'messages.update',
@@ -27,9 +27,9 @@ export default {
           if (!oldText || !newText || oldText === newText) continue;
 
           const sender = key.participant || jid;
-          console.log(`\x1b[35m[WARDEN] Message Edited by @${sender.split('@')[0]}\x1b[0m`);
+          console.log(`\x1b[35m[WARDEN] Message Edited in ${jid.split('@')[0]}\x1b[0m`);
 
-          const report = `┌──⌈ 🛡️ EDITED ⌋
+          const report = `┌──⌈ 🛡️ ANTI-EDIT ⌋
 ┃ 
 ┃ User: @${sender.split('@')[0]}
 ┃ Chat: ${jid.split('@')[0]}

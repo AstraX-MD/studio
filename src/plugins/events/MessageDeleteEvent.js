@@ -1,6 +1,6 @@
 /**
  * @fileOverview Warden: Anti-Delete System.
- * Sends original content to Owner DM in simple English.
+ * Sends original content to Owner DM in Simple English.
  */
 export default {
   name: 'messages.delete',
@@ -15,6 +15,7 @@ export default {
         const jid = key.remoteJid;
         const sender = key.participant || jid;
         
+        // Load from Baileys store (Must be bound in Client.js)
         const msg = await bot.client.store.loadMessage(jid, key.id);
         if (!msg) continue;
 
@@ -23,14 +24,14 @@ export default {
                       msg.message?.imageMessage?.caption || 
                       'Media Content';
 
-        console.log(`\x1b[35m[WARDEN] Message Deleted by @${sender.split('@')[0]}\x1b[0m`);
+        console.log(`\x1b[35m[WARDEN] Message Deleted in ${jid.split('@')[0]}\x1b[0m`);
 
-        const report = `┌──⌈ 🛡️ DELETED ⌋
+        const report = `┌──⌈ 🛡️ ANTI-DELETE ⌋
 ┃ 
 ┃ User: @${sender.split('@')[0]}
 ┃ Chat: ${jid.split('@')[0]}
 ┃ 
-├─⌈ ORIGINAL CONTENT ⌋
+├─⌈ ORIGINAL MESSAGE ⌋
 ┃ "${content}"
 ┃ 
 └─ AstraX Warden`;

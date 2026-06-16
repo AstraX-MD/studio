@@ -1,5 +1,6 @@
 /**
- * @fileOverview Discovers and registers commands with clean audit logging.
+ * @fileOverview Discovers and registers commands with an Intelligent Alias Priority Engine.
+ * v1.2.5: Prevents command mixing by prioritizing categories.
  */
 import fs from 'fs';
 import path from 'path';
@@ -9,10 +10,23 @@ class CommandLoader {
     const pluginsDir = path.resolve('src/plugins/commands');
     if (!fs.existsSync(pluginsDir)) return;
 
+    // Priority hierarchy for alias resolution
+    const categoryPriority = {
+      'owner': 100,
+      'sudo': 90,
+      'admin': 80,
+      'security': 70,
+      'general': 60,
+      'utility': 50
+    };
+
     const categories = fs.readdirSync(pluginsDir);
     let loaded = 0;
-    let failed = 0;
+    let conflicts = 0;
     
+    // Internal map to track alias origins and priorities
+    const aliasRegistry = new Map();
+
     for (const category of categories) {
       const categoryPath = path.join(pluginsDir, category);
       if (!fs.statSync(categoryPath).isDirectory()) continue;
@@ -21,51 +35,59 @@ class CommandLoader {
       
       for (const file of files) {
         try {
-          const success = await this.reload(bot, category, file);
-          if (success) loaded++;
-          else failed++;
+          const filePath = path.resolve('src/plugins/commands', category, file);
+          const { default: command } = await import(`file://${filePath}?update=${Date.now()}`);
+          
+          if (!command || !command.name) continue;
+          
+          command.category = category;
+          command.fileName = file;
+
+          // Register Main Name
+          bot.commands.set(command.name, command);
+          loaded++;
+
+          // Register Aliases with Priority Resolution
+          if (command.aliases && Array.isArray(command.aliases)) {
+            for (const alias of command.aliases) {
+              const existing = aliasRegistry.get(alias);
+              const currentPriority = categoryPriority[category] || 0;
+              const existingPriority = existing ? (categoryPriority[existing.category] || 0) : -1;
+
+              if (!existing || currentPriority > existingPriority) {
+                bot.commands.set(alias, command);
+                aliasRegistry.set(alias, { name: command.name, category });
+              } else {
+                conflicts++;
+              }
+            }
+          }
         } catch (e) {
-          failed++;
+          console.log(`\x1b[31m==> ERROR: Failed to load ${file}: ${e.message}\x1b[0m`);
         }
       }
     }
     
-    console.log(`==> ENGINE: ${loaded} modules active. ${failed} modules skipped.`);
+    const uniqueCount = new Set(bot.commands.values()).size;
+    console.log(`\x1b[32m==> ENGINE: ${uniqueCount} Modules Active. ${bot.commands.size} Triggers.\x1b[0m`);
+    if (conflicts > 0) console.log(`\x1b[33m==> ENGINE: Resolved ${conflicts} alias conflicts via Priority logic.\x1b[0m`);
   }
 
   static async reload(bot, category, fileName) {
     try {
       const filePath = path.resolve('src/plugins/commands', category, fileName);
       const { default: command } = await import(`file://${filePath}?update=${Date.now()}`);
-      
       if (!command || !command.name) return false;
-      
-      command.category = category;
-      command.fileName = fileName;
-      
-      // Cleanup old aliases
-      const existing = bot.commands.get(command.name);
-      if (existing && existing.aliases) {
-        existing.aliases.forEach(alias => bot.commands.delete(alias));
-      }
-
       bot.commands.set(command.name, command);
-      if (command.aliases && Array.isArray(command.aliases)) {
-        command.aliases.forEach(alias => bot.commands.set(alias, command));
-      }
+      if (command.aliases) command.aliases.forEach(a => bot.commands.set(a, command));
       return true;
-    } catch (e) {
-      return false;
-    }
+    } catch (e) { return false; }
   }
 
   static unload(bot, commandName) {
-    const command = bot.commands.get(commandName);
-    if (!command) return false;
-
-    if (command.aliases) {
-      command.aliases.forEach(alias => bot.commands.delete(alias));
-    }
+    const cmd = bot.commands.get(commandName);
+    if (!cmd) return false;
+    if (cmd.aliases) cmd.aliases.forEach(a => bot.commands.delete(a));
     bot.commands.delete(commandName);
     return true;
   }

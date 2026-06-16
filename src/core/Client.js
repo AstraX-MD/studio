@@ -1,6 +1,6 @@
 /**
  * @fileOverview Baileys Connection Core.
- * Optimized for 24/7 stability with store persistence.
+ * Optimized for 24/7 Stability with Baileys 6.7.22 and Store Persistence.
  */
 import pkg from '@whiskeysockets/baileys';
 const { 
@@ -53,12 +53,12 @@ class Client {
       logger: pino({ level: 'silent' }),
       browser: Browsers.ubuntu('Chrome'),
       markOnlineOnConnect: true,
-      syncFullHistory: false,
-      shouldSyncHistoryMessage: () => false,
+      syncFullHistory: false, // Prevents 408 Timeouts
+      shouldSyncHistoryMessage: () => false, // Prevents Bad MAC errors
       generateHighQualityLinkPreview: true
     });
 
-    // Bind store to track messages
+    // Bind store to track messages for Anti-Delete
     this.store.bind(this.sock.ev);
 
     this.sock.ev.on('creds.update', saveCreds);

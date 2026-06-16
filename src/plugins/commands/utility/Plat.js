@@ -2,6 +2,7 @@
  * @fileOverview Intelligent Platform Detection Engine.
  */
 import os from 'os';
+import fs from 'fs';
 
 export default {
   name: "plat",
@@ -14,26 +15,26 @@ export default {
   execute: async (ctx) => {
     const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
     
-    let provider = 'GENERIC VPS / LOCAL';
+    let provider = 'Generic VPS / Local';
     
     // Probing for Cloud Signatures
-    if (process.env.RENDER) provider = 'RENDER.COM (CLOUD)';
-    else if (process.env.HEROKU_APP_ID || process.env.DYNO) provider = 'HEROKU (PAAS)';
-    else if (process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PROJECT_ID) provider = 'RAILWAY.APP (CLOUD)';
-    else if (process.env.FLY_APP_NAME) provider = 'FLY.IO (EDGE)';
-    else if (process.env.REPL_ID || process.env.REPLIT_SLUG) provider = 'REPLIT (CONTAINER)';
-    else if (process.env.KOYEB_APP_NAME) provider = 'KOYEB (CLOUD)';
-    else if (process.env.CODESPACE_NAME) provider = 'GITHUB CODESPACES';
-    else if (fs.existsSync('/.dockerenv')) provider = 'DOCKER CONTAINER';
+    if (process.env.RENDER) provider = 'Render.com (Cloud)';
+    else if (process.env.HEROKU_APP_ID || process.env.DYNO) provider = 'Heroku (PaaS)';
+    else if (process.env.RAILWAY_STATIC_URL || process.env.RAILWAY_PROJECT_ID) provider = 'Railway.app (Cloud)';
+    else if (process.env.FLY_APP_NAME) provider = 'Fly.io (Edge)';
+    else if (process.env.REPL_ID || process.env.REPLIT_SLUG) provider = 'Replit (Container)';
+    else if (process.env.KOYEB_APP_NAME) provider = 'Koyeb (Cloud)';
+    else if (process.env.CODESPACE_NAME) provider = 'GitHub Codespaces';
+    else if (fs.existsSync('/.dockerenv')) provider = 'Docker Container';
 
     const output = `┌──⌈ 🛰️ PLATFORM ⌋
 ┃ 
-┃ Provider: ${provider}
-┃ Node Version: ${process.version}
+┃ Host: ${provider}
+┃ Version: ${process.version}
 ┃ OS: ${os.platform()} (${os.arch()})
 ┃ 
-├─⊷ Status: NODE_REACHABLE
-├─⊷ Region: GLOBAL-AUTO
+├─⊷ Status: Reachable
+├─⊷ Node: Active
 ┃ 
 └─ 🌌 ${botName.toUpperCase()}`;
 
