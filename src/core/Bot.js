@@ -1,5 +1,5 @@
 /**
- * @fileOverview AstraX Orchestrator.
+ * @fileOverview AstraX Orchestrator with Dashboard Manifest Provider.
  */
 import Client from './Client.js';
 import CommandLoader from '../loaders/CommandLoader.js';
@@ -69,6 +69,9 @@ class Bot {
     }
   }
 
+  /**
+   * Provides data for Tab 3 (Explorer) and Tab 4 (Analytics)
+   */
   getCommandManifest() {
     const manifest = [];
     const seen = new Set();

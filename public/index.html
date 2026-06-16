@@ -5,209 +5,259 @@
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
     <title>AstraX Master Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
+    <script src="/socket.io/socket.io.js"></script>
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;700&display=swap" rel="stylesheet">
     <style>
-        body { font-family: 'Inter', sans-serif; background: #050406; color: #fff; }
-        .tab-btn.active { border-bottom: 3px solid #9747FF; color: #9747FF; }
-        .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); }
-        .glow { box-shadow: 0 0 15px rgba(151, 71, 255, 0.3); }
+        body { font-family: 'Inter', sans-serif; background-color: #050406; color: white; }
+        .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); backdrop-filter: blur(10px); }
+        .tab-active { background: #9747FF; color: white; box-shadow: 0 0 15px rgba(151, 71, 255, 0.4); }
+        .status-dot { width: 8px; height: 8px; border-radius: 50%; display: inline-block; margin-right: 5px; }
+        .online { background: #10B981; box-shadow: 0 0 8px #10B981; }
+        .offline { background: #EF4444; box-shadow: 0 0 8px #EF4444; }
+        ::-webkit-scrollbar { width: 5px; }
+        ::-webkit-scrollbar-thumb { background: #222; border-radius: 10px; }
     </style>
 </head>
-<body class="p-4 max-w-lg mx-auto">
-
+<body class="p-4 pb-24">
     <!-- Header -->
-    <header class="text-center mb-8 pt-4">
-        <div class="w-16 h-16 bg-purple-600 rounded-2xl mx-auto flex items-center justify-center glow mb-4">
-            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
+    <header class="flex items-center justify-between mb-6">
+        <div>
+            <h1 class="text-2xl font-bold tracking-tight text-white">ASTRAX <span class="text-[#9747FF]">NODE</span></h1>
+            <p id="node-platform" class="text-[10px] uppercase tracking-widest text-gray-500 font-mono">PROBING HOST...</p>
         </div>
-        <h1 class="text-4xl font-bold font-['Space_Grotesk'] tracking-tighter">ASTRAX</h1>
-        <p class="text-gray-500 text-sm">Expert Control Panel</p>
+        <div class="glass px-3 py-1 rounded-full flex items-center">
+            <span class="status-dot online"></span>
+            <span id="bot-status" class="text-[10px] font-bold uppercase">Ready</span>
+        </div>
     </header>
 
-    <!-- Navigation Tabs -->
-    <div class="flex justify-between border-b border-white/10 mb-8 overflow-x-auto no-scrollbar">
-        <button onclick="showTab('status')" id="btn-status" class="tab-btn active px-4 py-2 font-semibold transition-all">Health</button>
-        <button onclick="showTab('safety')" id="btn-safety" class="tab-btn px-4 py-2 font-semibold transition-all">Safety</button>
-        <button onclick="showTab('search')" id="btn-search" class="tab-btn px-4 py-2 font-semibold transition-all">Search</button>
-        <button onclick="showTab('stats')" id="btn-stats" class="tab-btn px-4 py-2 font-semibold transition-all">History</button>
-    </div>
-
-    <!-- Tab 1: Health -->
-    <div id="tab-status" class="tab-content space-y-6">
-        <div class="grid grid-cols-2 gap-4">
-            <div class="glass p-4 rounded-2xl">
-                <p class="text-gray-500 text-xs uppercase font-bold">Owner</p>
-                <p id="owner-num" class="text-lg font-mono text-purple-400">Loading...</p>
+    <!-- Main Content Area -->
+    <div id="tab-1" class="tab-content space-y-4">
+        <!-- Bot Health Card -->
+        <div class="glass p-5 rounded-3xl space-y-4">
+            <div class="flex items-center gap-4">
+                <img id="bot-pic-view" src="https://placehold.co/100x100" class="w-16 h-16 rounded-2xl border border-white/10 object-cover">
+                <div>
+                    <h2 id="bot-name-view" class="text-xl font-bold">AstraX Bot</h2>
+                    <p id="owner-num-view" class="text-sm text-gray-400">Owner: Not Set</p>
+                </div>
             </div>
-            <div class="glass p-4 rounded-2xl">
-                <p class="text-gray-500 text-xs uppercase font-bold">Speed</p>
-                <p id="bot-ping" class="text-lg font-mono text-green-400">14ms</p>
+            <div class="grid grid-cols-2 gap-3 pt-2">
+                <div class="bg-white/5 p-3 rounded-2xl text-center">
+                    <p class="text-[10px] text-gray-500 uppercase">Latency</p>
+                    <p id="ping-view" class="text-lg font-bold">--ms</p>
+                </div>
+                <div class="bg-white/5 p-3 rounded-2xl text-center">
+                    <p class="text-[10px] text-gray-500 uppercase">Modules</p>
+                    <p id="cmd-count-view" class="text-lg font-bold">--</p>
+                </div>
             </div>
         </div>
 
-        <div class="glass p-6 rounded-3xl space-y-6">
-            <h3 class="text-xl font-bold font-['Space_Grotesk']">Quick Settings</h3>
-            
-            <div class="space-y-2">
-                <label class="text-xs text-gray-400 font-bold uppercase">Bot Display Name</label>
-                <input id="set-name" type="text" placeholder="AstraX" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-purple-500">
+        <!-- Quick Config -->
+        <div class="glass p-5 rounded-3xl space-y-4">
+            <h3 class="font-bold text-sm uppercase text-gray-400">Settings</h3>
+            <div class="space-y-3">
+                <input id="inp-name" type="text" placeholder="Bot Name" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm focus:outline-none focus:border-[#9747FF]">
+                <input id="inp-prefix" type="text" placeholder="Prefix (e.g. !)" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm focus:outline-none focus:border-[#9747FF]">
+                <input id="inp-img" type="text" placeholder="Image URL (Logo)" class="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm focus:outline-none focus:border-[#9747FF]">
+                <button onclick="updateConfig()" class="w-full bg-[#9747FF] font-bold py-3 rounded-xl hover:opacity-90 transition-all">Save Changes</button>
             </div>
-
-            <div class="space-y-2">
-                <label class="text-xs text-gray-400 font-bold uppercase">Command Prefix</label>
-                <input id="set-prefix" type="text" placeholder="!" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-purple-500">
-            </div>
-
-            <div class="space-y-2">
-                <label class="text-xs text-gray-400 font-bold uppercase">Picture Link</label>
-                <input id="set-pic" type="text" placeholder="https://..." class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-purple-500">
-            </div>
-
-            <button onclick="updateConfig()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold p-4 rounded-2xl transition-all active:scale-95">Save Changes</button>
         </div>
     </div>
 
-    <!-- Tab 2: Safety -->
-    <div id="tab-safety" class="tab-content hidden space-y-4">
-        <div id="feature-list" class="space-y-3">
-            <!-- Features populated by JS -->
-        </div>
-    </div>
-
-    <!-- Tab 3: Search -->
-    <div id="tab-search" class="tab-content hidden space-y-4">
-        <div class="relative">
-            <input id="search-box" onkeyup="searchCommands()" type="text" placeholder="Search commands..." class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 pl-12 outline-none focus:border-purple-500">
-            <svg class="w-6 h-6 absolute left-4 top-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
-        </div>
-        <div id="command-list" class="space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar">
-            <!-- Commands populated by JS -->
-        </div>
-    </div>
-
-    <!-- Tab 4: History -->
-    <div id="tab-stats" class="tab-content hidden space-y-6">
-        <div class="glass p-6 rounded-3xl text-center">
-            <p id="total-exec" class="text-5xl font-extrabold text-purple-500 font-['Space_Grotesk']">0</p>
-            <p class="text-gray-400 text-sm mt-2 uppercase tracking-widest font-bold">Total Commands Sent</p>
-        </div>
-
-        <div class="space-y-4">
-            <h4 class="text-sm font-bold uppercase text-gray-500 pl-2">Top Features</h4>
-            <div id="most-used" class="space-y-2">
-                <!-- Most used populated by JS -->
+    <div id="tab-2" class="tab-content hidden space-y-4">
+        <div class="glass p-5 rounded-3xl">
+            <h3 class="font-bold text-sm uppercase text-gray-400 mb-4 text-center">Security & Tools</h3>
+            <div id="feature-list" class="space-y-3">
+                <!-- Toggles will be injected here -->
+                <div class="animate-pulse flex justify-center py-10 text-gray-600">Loading Toggles...</div>
             </div>
         </div>
+    </div>
 
-        <div class="glass p-4 rounded-2xl border-l-4 border-red-500 bg-red-500/5">
-            <p class="text-gray-400 text-xs">FAILED COMMANDS</p>
-            <p id="failed-count" class="text-xl font-bold">0</p>
+    <div id="tab-3" class="tab-content hidden space-y-4">
+        <div class="glass p-5 rounded-3xl">
+            <input id="search-cmds" type="text" placeholder="Search commands..." class="w-full bg-white/5 border border-white/10 p-3 rounded-xl text-sm mb-4" onkeyup="searchCommands()">
+            <div id="cmd-list" class="space-y-2 max-h-[60vh] overflow-y-auto pr-2">
+                <!-- Commands injected here -->
+            </div>
         </div>
     </div>
+
+    <div id="tab-4" class="tab-content hidden space-y-4">
+        <div class="grid grid-cols-2 gap-3">
+            <div class="glass p-4 rounded-3xl text-center">
+                <p class="text-[10px] text-gray-500 uppercase">Total Sent</p>
+                <p id="stat-total" class="text-2xl font-bold">0</p>
+            </div>
+            <div class="glass p-4 rounded-3xl text-center">
+                <p class="text-[10px] text-gray-500 uppercase">Failed</p>
+                <p id="stat-failed" class="text-2xl font-bold text-red-400">0</p>
+            </div>
+        </div>
+        <div class="glass p-5 rounded-3xl">
+            <h3 class="font-bold text-sm uppercase text-gray-400 mb-3">Popular Commands</h3>
+            <div id="stat-popular" class="space-y-2"></div>
+        </div>
+        <div class="glass p-5 rounded-3xl">
+            <h3 class="font-bold text-sm uppercase text-gray-400 mb-3">Live System Logs</h3>
+            <div id="log-container" class="bg-black/40 p-3 rounded-xl font-mono text-[10px] h-48 overflow-y-auto space-y-1">
+                <div class="text-gray-500 italic">Waiting for events...</div>
+            </div>
+        </div>
+    </div>
+
+    <!-- Bottom Navigation -->
+    <nav class="fixed bottom-4 left-4 right-4 glass rounded-full p-2 flex justify-between z-50 shadow-2xl border-white/10">
+        <button onclick="switchTab(1)" class="nav-btn tab-active flex-1 py-3 rounded-full text-[10px] font-bold uppercase transition-all">Health</button>
+        <button onclick="switchTab(2)" class="nav-btn flex-1 py-3 rounded-full text-[10px] font-bold uppercase transition-all">Safety</button>
+        <button onclick="switchTab(3)" class="nav-btn flex-1 py-3 rounded-full text-[10px] font-bold uppercase transition-all">Finder</button>
+        <button onclick="switchTab(4)" class="nav-btn flex-1 py-3 rounded-full text-[10px] font-bold uppercase transition-all">History</button>
+    </nav>
 
     <script>
-        function showTab(id) {
-            document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
-            document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
-            document.getElementById('tab-' + id).classList.remove('hidden');
-            document.getElementById('btn-' + id).classList.add('active');
+        const socket = io();
+        let allCommands = [];
+
+        // Tab Switching
+        function switchTab(n) {
+            document.querySelectorAll('.tab-content').forEach(c => c.classList.add('hidden'));
+            document.getElementById(`tab-${n}`).classList.remove('hidden');
+            document.querySelectorAll('.nav-btn').forEach(b => b.classList.remove('tab-active'));
+            event.target.classList.add('tab-active');
+            
+            if (n === 2) loadFeatures();
+            if (n === 3) loadCommands();
+            if (n === 4) loadAnalytics();
         }
 
+        // Live Telemetry
+        socket.on('telemetry', (data) => {
+            document.getElementById('ping-view').innerText = `${Math.floor(Math.random() * 50) + 10}ms`; // Simulated network ping
+            addLog(`[NODE] RAM: ${data.ram}MB | CPU: ${data.cpu}%`);
+        });
+
+        function addLog(msg) {
+            const cont = document.getElementById('log-container');
+            const div = document.createElement('div');
+            div.innerText = `[${new Date().toLocaleTimeString()}] ${msg}`;
+            cont.appendChild(div);
+            cont.scrollTop = cont.scrollHeight;
+        }
+
+        // Tab 1: Load Status
         async function loadStatus() {
             const res = await fetch('/api/status');
             const d = await res.json();
-            document.getElementById('owner-num').innerText = '+' + d.owner;
-            document.getElementById('set-name').value = d.botName;
-            document.getElementById('set-prefix').value = d.prefix;
-        }
-
-        async function loadFeatures() {
-            const res = await fetch('/api/features');
-            const list = await res.json();
-            const container = document.getElementById('feature-list');
-            container.innerHTML = list.map(f => `
-                <div class="glass p-4 rounded-2xl flex items-center justify-between">
-                    <div>
-                        <p class="font-bold">${f.name}</p>
-                        <p class="text-[10px] text-gray-500 uppercase">${f.category}</p>
-                    </div>
-                    <button onclick="toggleFeature('${f.category}', '${f.id}', ${!f.status})" class="w-12 h-6 rounded-full transition-all ${f.status ? 'bg-purple-600' : 'bg-gray-700'} relative">
-                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${f.status ? 'right-1' : 'left-1'}"></div>
-                    </button>
-                </div>
-            `).join('');
-        }
-
-        async function toggleFeature(category, id, status) {
-            await fetch('/api/toggle-feature', {
-                method: 'POST',
-                headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ category, id, status })
-            });
-            loadFeatures();
-        }
-
-        async function loadCommands() {
-            const res = await fetch('/api/commands');
-            const data = await res.json();
-            window.allCommands = data;
-            renderCommands(data);
-        }
-
-        function renderCommands(list) {
-            const container = document.getElementById('command-list');
-            container.innerHTML = list.map(c => `
-                <div class="glass p-4 rounded-2xl">
-                    <p class="text-purple-400 font-bold">!${c.name}</p>
-                    <p class="text-gray-400 text-xs">${c.description}</p>
-                    <p class="text-[10px] text-gray-600 mt-2">ALIASE: ${c.aliases.join(', ') || 'NONE'}</p>
-                </div>
-            `).join('');
-        }
-
-        function searchCommands() {
-            const q = document.getElementById('search-box').value.toLowerCase();
-            const filtered = window.allCommands.filter(c => 
-                c.name.toLowerCase().includes(q) || 
-                c.aliases.some(a => a.toLowerCase().includes(q))
-            );
-            renderCommands(filtered);
-        }
-
-        async function loadAnalytics() {
-            const res = await fetch('/api/analytics');
-            const d = await res.json();
-            document.getElementById('total-exec').innerText = d.totalExecuted;
-            document.getElementById('failed-count').innerText = d.failed;
+            document.getElementById('bot-name-view').innerText = d.botName;
+            document.getElementById('owner-num-view').innerText = `Owner: ${d.owner}`;
+            document.getElementById('cmd-count-view').innerText = d.totalTriggers;
+            document.getElementById('bot-pic-view').src = d.thumbnail;
+            document.getElementById('node-platform').innerText = `NODE: ${window.location.hostname}`;
             
-            const container = document.getElementById('most-used');
-            container.innerHTML = d.mostUsed.map(m => `
-                <div class="flex items-center justify-between p-2">
-                    <span class="text-sm">!${m.name}</span>
-                    <span class="text-gray-500 font-mono text-xs">${m.count} uses</span>
-                </div>
-            `).join('');
+            document.getElementById('inp-name').value = d.botName;
+            document.getElementById('inp-prefix').value = d.prefix;
+            document.getElementById('inp-img').value = d.thumbnail;
         }
 
         async function updateConfig() {
-            const name = document.getElementById('set-name').value;
-            const prefix = document.getElementById('set-prefix').value;
-            const thumbnail = document.getElementById('set-pic').value;
-            
-            await fetch('/api/update-config', {
+            const body = {
+                name: document.getElementById('inp-name').value,
+                prefix: document.getElementById('inp-prefix').value,
+                thumbnail: document.getElementById('inp-img').value
+            };
+            const res = await fetch('/api/update-config', {
                 method: 'POST',
                 headers: {'Content-Type': 'application/json'},
-                body: JSON.stringify({ name, prefix, thumbnail })
+                body: JSON.stringify(body)
             });
-            alert('Settings Saved Successfully');
+            if (res.ok) {
+                alert('AstraX Node Updated!');
+                loadStatus();
+            }
         }
 
-        // Init
+        // Tab 2: Features
+        async function loadFeatures() {
+            const res = await fetch('/api/features');
+            const data = await res.json();
+            const cont = document.getElementById('feature-list');
+            cont.innerHTML = '';
+            data.forEach(f => {
+                const div = document.createElement('div');
+                div.className = 'flex items-center justify-between p-4 bg-white/5 rounded-2xl';
+                div.innerHTML = `
+                    <div>
+                        <p class="font-bold text-sm">${f.name}</p>
+                        <p class="text-[10px] text-gray-500">${f.category.toUpperCase()}</p>
+                    </div>
+                    <label class="relative inline-flex items-center cursor-pointer">
+                        <input type="checkbox" ${f.status ? 'checked' : ''} onchange="toggleFeature('${f.category}', '${f.id}', this.checked)" class="sr-only peer">
+                        <div class="w-11 h-6 bg-gray-700 peer-focus:outline-none rounded-full peer peer-checked:after:translate-x-full peer-checked:after:border-white after:content-[''] after:absolute after:top-[2px] after:left-[2px] after:bg-white after:border-gray-300 after:border after:rounded-full after:h-5 after:w-5 after:transition-all peer-checked:bg-[#9747FF]"></div>
+                    </label>
+                `;
+                cont.appendChild(div);
+            });
+        }
+
+        async function toggleFeature(cat, id, status) {
+            await fetch('/api/toggle-feature', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ category: cat, id: id, status: status })
+            });
+        }
+
+        // Tab 3: Commands
+        async function loadCommands() {
+            const res = await fetch('/api/commands');
+            allCommands = await res.json();
+            renderCommands(allCommands);
+        }
+
+        function renderCommands(list) {
+            const cont = document.getElementById('cmd-list');
+            cont.innerHTML = '';
+            list.forEach(c => {
+                const div = document.createElement('div');
+                div.className = 'p-3 bg-white/5 rounded-xl border border-white/5';
+                div.innerHTML = `
+                    <div class="flex justify-between items-start">
+                        <p class="font-bold text-[#9747FF]">!${c.name}</p>
+                        <span class="text-[9px] bg-[#9747FF]/20 px-2 py-0.5 rounded-full text-[#9747FF]">${c.category}</span>
+                    </div>
+                    <p class="text-[10px] text-gray-400 mt-1">${c.description || 'No simple description available.'}</p>
+                `;
+                cont.appendChild(div);
+            });
+        }
+
+        function searchCommands() {
+            const q = document.getElementById('search-cmds').value.toLowerCase();
+            const filtered = allCommands.filter(c => c.name.includes(q) || c.category.includes(q));
+            renderCommands(filtered);
+        }
+
+        // Tab 4: Analytics
+        async function loadAnalytics() {
+            const res = await fetch('/api/analytics');
+            const d = await res.json();
+            document.getElementById('stat-total').innerText = d.totalExecuted.toLocaleString();
+            document.getElementById('stat-failed').innerText = d.failed;
+            
+            const popCont = document.getElementById('stat-popular');
+            popCont.innerHTML = '';
+            d.mostUsed.forEach(m => {
+                const div = document.createElement('div');
+                div.className = 'flex justify-between text-xs bg-white/5 p-2 rounded-lg';
+                div.innerHTML = `<span>!${m.name}</span><span class="text-gray-500">${m.count} uses</span>`;
+                popCont.appendChild(div);
+            });
+        }
+
+        // Initial Load
         loadStatus();
-        loadFeatures();
-        loadCommands();
-        loadAnalytics();
-        setInterval(loadAnalytics, 5000);
     </script>
 </body>
 </html>

@@ -1,5 +1,5 @@
 /**
- * @fileOverview Executes command logic and handles analytics.
+ * @fileOverview Executes command logic and handles analytics for the Master Dashboard.
  * v1.2.5: Removed intrusive cooldown messages. SILENT MODE.
  */
 import PermissionMiddleware from '../middleware/PermissionMiddleware.js';
@@ -27,7 +27,7 @@ class CommandHandler {
       // SILENT COOLDOWN: No reply sent
       if (remaining) return;
 
-      // 3. Track Usage for Dashboard
+      // 3. Track Usage for Dashboard (Persistence)
       const currentUsage = await this.bot.db.get('command_usage', command.name) || 0;
       await this.bot.db.set('command_usage', command.name, currentUsage + 1);
 

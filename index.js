@@ -1,5 +1,5 @@
 /**
- * @fileOverview Main entry point for AstraX.
+ * @fileOverview Main entry point for AstraX Node with Master Dashboard API.
  * v1.2.5: Optimized for Cloud Hosting with High-End Dashboard API.
  */
 import 'dotenv/config';
