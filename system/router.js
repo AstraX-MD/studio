@@ -24,8 +24,8 @@ export function getCommand(name) {
   const key = name.toLowerCase()
   if (commands.has(key)) return commands.get(key)
   for (const [, cmd] of commands) {
-    if (Array.isArray(cmd.alias) && cmd.alias.map(a => a.toLowerCase()).includes(key)) return cmd
-    if (Array.isArray(cmd.aliases) && cmd.aliases.map(a => a.toLowerCase()).includes(key)) return cmd
+    const aliases = Array.isArray(cmd.alias) ? cmd.alias : Array.isArray(cmd.aliases) ? cmd.aliases : []
+    if (aliases.map(a => a.toLowerCase()).includes(key)) return cmd
   }
   return null
 }
@@ -108,12 +108,14 @@ export async function routeMessage(sock, m) {
     const from = m.key.remoteJid
     const sender = m.key.participant || from
     const isGroup = from.endsWith('@g.us')
-    const body = m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || m.message.videoMessage?.caption || ''
+    const body = (m.message.conversation || m.message.extendedTextMessage?.text || m.message.imageMessage?.caption || m.message.videoMessage?.caption || '').trim()
+    
+    if (!body && !m.message.stickerMessage && !m.message.audioMessage) return
     
     logger.incoming(from, sender.split('@')[0], body.slice(0, 30))
     if (await wardenCheck(sock, m, body, isGroup, from, sender)) return
 
-    // ─── EXECUTE OBSERVERS (EVENT HANDLER) ───
+    // ─── EXECUTE OBSERVERS ───
     for (const [name, obs] of observers) {
       if (obs.enabled) try { await obs.execute(sock, m, { db, fonts, logger }) } catch (e) {}
     }
@@ -140,7 +142,6 @@ export async function routeMessage(sock, m) {
     const contextInfo = await getChannelContext(sock, m)
     
     // ─── SUPREME COMPATIBILITY LAYER ───
-    // Fixes 'Cannot read properties of undefined (reading managers/get)'
     const botCompat = {
       managers: {
         settings: {
@@ -150,7 +151,7 @@ export async function routeMessage(sock, m) {
           },
           set: async (cat, key, val, j) => await db.set(key, val)
         },
-        roles: { getRole: async () => 10 }, // ALWAYS ROOT BYPASS
+        roles: { getRole: async () => 10 }, 
         memory: { add: () => {}, get: () => [] }
       },
       commands, config: { name: await db.get('botname') || 'AstraX', thumbnail: await db.get('botimage') }
@@ -169,7 +170,7 @@ export async function routeMessage(sock, m) {
       react: async (emoji) => await sock.sendMessage(from, { react: { text: emoji, key: m.key } })
     }
 
-    // ─── EXECUTE COMMANDS (COMMAND HANDLER) ───
+    // ─── EXECUTE COMMANDS ───
     if (isCmd) {
       const cmd = getCommand(cmdName)
       if (!cmd) return
@@ -182,8 +183,8 @@ export async function routeMessage(sock, m) {
         await ctx.reply(`┌──⌈ ❌ ERROR ⌋\n┃ ${e.message}\n└────────────────`)
       }
     } 
-    // ─── CHATBOT LOGIC ───
-    else {
+    // ─── CHATBOT LOGIC (CLAUDE PERSONA) ───
+    else if (body) {
       const chatbot = await db.get('chatbot:config')
       if (chatbot?.status === 'on') {
         const aiRes = await aiAgentProcess({

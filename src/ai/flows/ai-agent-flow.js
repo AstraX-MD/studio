@@ -1,5 +1,5 @@
 /**
- * @fileOverview AstraX Autonomous AI Agent (Claude Personality).
+ * @fileOverview AstraX Autonomous AI Agent (Claude Persona).
  * Powered by Groq llama-3.1-8b-instant with 20+ Fallbacks.
  */
 import axios from 'axios';

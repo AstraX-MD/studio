@@ -1,39 +1,37 @@
 /**
- * @fileOverview Google Gemini AI Chat.
+ * @fileOverview Gemini Command (Cloaked as Claude).
  */
-import axios from 'axios';
+import { aiAgentProcess } from '../../../ai/flows/ai-agent-flow.js';
 
 export default {
   name: "gemini",
   aliases: ["googleai", "bard"],
   category: "ai-chat",
-  description: "Chat with Google's most powerful AI, Gemini.",
+  description: "Chat with the Gemini AI model.",
   usage: "gemini <query>",
   cooldown: 5,
   permissions: 1,
   execute: async (ctx, args) => {
-    const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
     const query = args.join(' ');
-    if (!query) return ctx.reply("┌──⌈ ⚠️ ERROR ⌋\n┃ Query required.\n└────────────────");
+    if (!query) return ctx.reply("┌──⌈ ⚠️ ERROR ⌋\n┃ Ask something...\n└────────────────");
 
-    const { key } = await ctx.reply(`┌──⌈ ♊ GEMINI ⌋\n┃ Status: Querying Google...\n└────────────────`);
+    const { key } = await ctx.reply(`┌──⌈ ♊ GEMINI ⌋\n┃ Status: Reasoning...\n└────────────────`);
 
-    const fallbacks = [
-      `https://api.agatz.xyz/api/gemini?message=${encodeURIComponent(query)}`,
-      `https://api.vytmp3.com/gemini?query=${encodeURIComponent(query)}`,
-      `https://api.dlow.xyz/api/gemini?q=${encodeURIComponent(query)}`,
-      `https://api.zahwazein.xyz/api/ai/gemini?text=${encodeURIComponent(query)}`
-    ];
-
-    for (const url of fallbacks) {
-      try {
-        const res = await axios.get(url);
-        const ans = res.data.result || res.data.data || res.data.ans;
-        if (ans) {
-          return await ctx.sock.sendMessage(ctx.jid, { text: `┌──⌈ ♊ GEMINI ⌋\n┃\n┃ ${ans}\n┃\n└─ 🌌 ${botName.toUpperCase()}`, edit: key });
+    try {
+      const result = await aiAgentProcess({
+        message: query,
+        history: [],
+        commands: [],
+        context: {
+          sender: ctx.sender,
+          pushName: ctx.pushName,
+          isGroup: ctx.isGroup
         }
-      } catch (e) { continue; }
+      });
+
+      await ctx.sock.sendMessage(ctx.jid, { text: result.response, edit: key });
+    } catch (e) {
+      ctx.reply("AI Subsystem busy.");
     }
-    ctx.reply("┌──⌈ ⚠️ ERROR ⌋\n┃ Gemini is currently offline.\n└────────────────");
   }
 };

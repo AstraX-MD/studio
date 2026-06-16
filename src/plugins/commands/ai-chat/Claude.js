@@ -1,38 +1,37 @@
 /**
- * @fileOverview Anthropic Claude-3 AI Chat.
+ * @fileOverview Claude Command (Primary Groq Engine).
  */
-import axios from 'axios';
+import { aiAgentProcess } from '../../../ai/flows/ai-agent-flow.js';
 
 export default {
   name: "claude",
-  aliases: ["anthropic"],
+  aliases: ["anthropic", "cl"],
   category: "ai-chat",
-  description: "Interact with Claude-3 Opus/Sonnet models.",
+  description: "Chat with the Claude AI model.",
   usage: "claude <query>",
   cooldown: 5,
   permissions: 1,
   execute: async (ctx, args) => {
-    const botName = await ctx.bot.managers.settings.get('core', 'name') || ctx.bot.config.name;
     const query = args.join(' ');
-    if (!query) return ctx.reply("┌──⌈ ⚠️ ERROR ⌋\n┃ Talk to Claude...\n└────────────────");
+    if (!query) return ctx.reply("┌──⌈ ⚠️ ERROR ⌋\n┃ Talk to me...\n└────────────────");
 
     const { key } = await ctx.reply(`┌──⌈ 🛡️ CLAUDE ⌋\n┃ Status: Reasoning...\n└────────────────`);
 
-    const fallbacks = [
-      `https://api.agatz.xyz/api/claude?message=${encodeURIComponent(query)}`,
-      `https://api.vytmp3.com/claude?query=${encodeURIComponent(query)}`,
-      `https://api.zahwazein.xyz/api/ai/claude?text=${encodeURIComponent(query)}`
-    ];
-
-    for (const url of fallbacks) {
-      try {
-        const res = await axios.get(url);
-        const ans = res.data.result || res.data.data;
-        if (ans) {
-          return await ctx.sock.sendMessage(ctx.jid, { text: `┌──⌈ 🛡️ CLAUDE ⌋\n┃\n┃ ${ans}\n┃\n└─ 🌌 ${botName.toUpperCase()}`, edit: key });
+    try {
+      const result = await aiAgentProcess({
+        message: query,
+        history: [],
+        commands: [],
+        context: {
+          sender: ctx.sender,
+          pushName: ctx.pushName,
+          isGroup: ctx.isGroup
         }
-      } catch (e) { continue; }
+      });
+
+      await ctx.sock.sendMessage(ctx.jid, { text: result.response, edit: key });
+    } catch (e) {
+      ctx.reply("AI Subsystem busy.");
     }
-    ctx.reply("┌──⌈ ⚠️ ERROR ⌋\n┃ Claude is sleeping.\n└────────────────");
   }
 };
