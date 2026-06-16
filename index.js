@@ -1,7 +1,6 @@
 /**
  * AstraX Enterprise - index.js
- * Main entry point — Baileys connection, session load, plugin init
- * Fixed for Render + no port errors
+ * High-speed entry point with Express port binding and 30-probe swarm.
  */
 
 import 'dotenv/config'
@@ -13,7 +12,7 @@ import { fileURLToPath } from 'url'
 import qrcode from 'qrcode-terminal'
 import baileys from '@whiskeysockets/baileys'
 
-import bot from './src/core/Bot.js'
+import { initDb, db } from './src/core/db.js'
 import { logger } from './src/core/logger.js'
 import { initLoader } from './src/core/loader.js'
 import { routeMessage, routeEvent } from './src/core/router.js'
@@ -22,7 +21,7 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 // ─────────────────────────────────────────────
-// BAILEYS DEFENSIVE SWARM PROBE
+// BAILEYS DEFENSIVE SWARM PROBE (30+ WAYS)
 // ─────────────────────────────────────────────
 function probe(pkg, name) {
   const source = pkg?.default || pkg;
@@ -43,38 +42,28 @@ const app = express()
 const PORT = process.env.PORT || 10000
 
 app.get('/', (req, res) => {
-  res.json({
-    status: 'online',
-    bot: 'AstraX Enterprise',
-    uptime: Math.floor(process.uptime()),
-    memory: `${(process.memoryUsage().rss / 1024 / 1024).toFixed(2)}MB`
-  })
+  res.json({ status: 'online', bot: 'AstraX Enterprise', uptime: Math.floor(process.uptime()) })
 })
 
 app.listen(PORT, () => {
-  logger.success('SERVER', `Dummy port ${PORT} opened for Render`)
+  logger.success('SERVER', `Port ${PORT} bound for Render`)
 })
 
-// Keep-alive ping every 14 minutes
 setInterval(() => {
   fetch(`http://localhost:${PORT}`).catch(() => {})
 }, 14 * 60 * 1000)
 
 let isStarting = false
 
-// ─────────────────────────────────────────────
-// START BOT
-// ─────────────────────────────────────────────
 async function startBot() {
   if (isStarting) return
   isStarting = true
 
   logger.bot('STARTUP', 'Initiating AstraX Swarm...')
 
-  await bot.db.init()
-  const loaderStats = await initLoader()
+  await initDb()
+  const pluginStats = await initLoader()
 
-  // Probing Baileys internals
   const makeWASocket = probe(baileys, 'makeWASocket');
   const useMultiFileAuthState = probe(baileys, 'useMultiFileAuthState');
   const DisconnectReason = probe(baileys, 'DisconnectReason');
@@ -82,15 +71,12 @@ async function startBot() {
   const fetchLatestBaileysVersion = probe(baileys, 'fetchLatestBaileysVersion');
 
   if (!useMultiFileAuthState || !makeWASocket) {
-    logger.error('CRASH', 'Failed to resolve Baileys core functions. Check ESM export mapping.')
+    logger.error('CRASH', 'Baileys core functions unresolved. Swarm failed.')
     process.exit(1)
   }
 
   const { version } = await fetchLatestBaileysVersion()
-  const SESSION_DIR = join(__dirname, 'sessions', bot.config.sessionName)
-  
-  if (!fs.existsSync(SESSION_DIR)) fs.mkdirSync(SESSION_DIR, { recursive: true })
-
+  const SESSION_DIR = join(__dirname, 'sessions')
   const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR)
 
   const sock = makeWASocket({
@@ -99,48 +85,37 @@ async function startBot() {
     printQRInTerminal: false,
     logger: pino({ level: 'silent' }),
     browser: Browsers.ubuntu('Chrome'),
-    markOnlineOnConnect: true,
     syncFullHistory: false,
-    shouldSyncHistoryMessage: () => false,
-    generateHighQualityLinkPreview: true
+    shouldSyncHistoryMessage: () => false
   })
 
-  bot.client.sock = sock
   sock.ev.on('creds.update', saveCreds)
 
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update
-
     if (qr) {
-      logger.info('QR', 'Scan this QR to login:')
+      logger.info('QR', 'Scan to login:')
       qrcode.generate(qr, { small: true })
     }
 
     if (connection === 'close') {
       const statusCode = lastDisconnect?.error?.output?.statusCode
-      const shouldReconnect = statusCode !== DisconnectReason.loggedOut
-
-      logger.error('SOCKET', `Closed (${statusCode})`, lastDisconnect?.error?.message)
-
-      if (shouldReconnect) {
-        logger.warn('SOCKET', 'Restarting node in 10s...')
+      if (statusCode !== DisconnectReason.loggedOut) {
         isStarting = false
         setTimeout(() => startBot(), 10000)
       } else {
-        logger.error('SOCKET', 'Logged out. Manual re-pair required.')
         process.exit(1)
       }
-
     } else if (connection === 'open') {
-      const botname = await bot.managers.settings.get('core', 'name') || bot.config.name
-      const prefix = await bot.managers.settings.get('core', 'prefix') || bot.config.prefix
-      const owner = bot.config.owners[0] || 'Not Set'
+      const botNumber = sock.user.id.split(':')[0]
+      await db.set('owner', botNumber)
+      const botname = await db.get('botname') || 'AstraX'
+      const prefix = await db.get('prefix') || '!'
 
       logger.connected(sock.user.id, botname)
-      logger.banner(botname, prefix, owner, bot.db.activeProviderName, version.join('.'))
-
-      // 30 FALLBACK OWNER NOTIFICATION
-      await _notifyOwner(sock, bot)
+      logger.banner(botname, prefix, botNumber, db.mode, version.join('.'))
+      
+      await _notifyOwner(sock, botNumber, botname, prefix, pluginStats.commands)
       isStarting = false
     }
   })
@@ -148,91 +123,42 @@ async function startBot() {
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
     if (type !== 'notify') return
     for (const m of messages) {
-      await routeMessage(sock, m, bot)
+      await routeMessage(sock, m)
     }
   })
 
   sock.ev.on('group-participants.update', async (update) => {
-    await routeEvent(sock, 'group-participants.update', update, bot)
-  })
-
-  sock.ev.on('messages.update', async (updates) => {
-    for (const update of updates) {
-      if (update.update.messageStubType === 8) {
-        await routeEvent(sock, 'messages.delete', update, bot)
-      }
-      if (update.update.message) {
-        await routeEvent(sock, 'messages.edit', update, bot)
-      }
-    }
-  })
-
-  sock.ev.on('call', async (calls) => {
-    await routeEvent(sock, 'call', calls, bot)
+    await routeEvent(sock, 'group-participants.update', update)
   })
 }
 
-/**
- * Expert Owner Notification with 30 Fallbacks
- */
-async function _notifyOwner(sock, botInstance) {
-  const rawId = sock.user.id.split(':')[0]
-  const jid = `${rawId}@s.whatsapp.net`
-  const botName = await botInstance.managers.settings.get('core', 'name') || 'AstraX'
-  const prefix = await botInstance.managers.settings.get('core', 'prefix') || '!'
-  const uniqueCount = new Set(botInstance.commands.values()).size
-  
-  let platform = 'Cloud Host'
-  if (process.env.RENDER) platform = 'Render.com'
-  else if (process.env.RAILWAY_PROJECT_ID) platform = 'Railway.app'
-
+async function _notifyOwner(sock, owner, name, prefix, cmds) {
+  const jid = `${owner}@s.whatsapp.net`
   const report = `┌──⌈ 🚀 ASTRAX READY ⌋
 ┃ 
-┃ Hello! Your bot is now 
-┃ online and working.
+┃ Hello! Your bot is online.
 ┃ 
 ├─⌈ BOT INFO ⌋
 ┃ 
-┃ 🤖 Name: ${botName}
+┃ 🤖 Name: ${name}
 ┃ 🏷️ Prefix: [ ${prefix} ]
-┃ 📦 Tools: ${uniqueCount}
+┃ 📦 Tools: ${cmds}
 ┃ 🕒 Time: ${new Date().toLocaleTimeString()}
-┃ 📡 Platform: ${platform}
-┃ 
-├─⌈ STATUS ⌋
-┃ 
-┃ ✅ System: STABLE
-┃ ✅ Safety: ARMED
-┃ ✅ Uptime: 24/7 ACTIVE
+┃ 📡 Platform: Cloud-Node
 ┃ 
 └─ AstraX System`
 
   for (let i = 0; i < 30; i++) {
     try {
-      await sock.sendMessage(jid, { 
-        image: { url: botInstance.config.thumbnail },
-        caption: report
-      })
-      logger.success('BOT', 'Owner report delivered (Image mode)')
+      await sock.sendMessage(jid, { text: report })
       return
     } catch (e) {
-      try {
-        await sock.sendMessage(jid, { text: report })
-        logger.success('BOT', 'Owner report delivered (Text mode)')
-        return
-      } catch (e2) {
-        await new Promise(r => setTimeout(r, 2000))
-      }
+      await new Promise(r => setTimeout(r, 2000))
     }
   }
 }
 
-process.on('uncaughtException', (err) => {
-  logger.error('CRASH', 'Uncaught Exception', err.message)
-})
-
-process.on('unhandledRejection', (err) => {
-  logger.error('CRASH', 'Unhandled Rejection', err?.message || err)
-})
+process.on('uncaughtException', (err) => logger.error('CRASH', err.message))
+process.on('unhandledRejection', (err) => logger.error('CRASH', err?.message || err))
 
 startBot()
