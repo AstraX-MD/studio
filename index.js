@@ -7,14 +7,8 @@
 
 import 'dotenv/config'
 import express from 'express'
-import baileys from '@whiskeysockets/baileys'
-const { 
-  default: makeWASocket, 
-  DisconnectReason, 
-  Browsers, 
-  initAuthCreds, 
-  BufferJSON 
-} = baileys
+import makeWASocket, { DisconnectReason, Browsers } from '@whiskeysockets/baileys'
+import { useMultiFileAuthState, fetchLatestBaileysVersion, BufferJSON } from '@whiskeysockets/baileys/lib/Utils/index.js'
 
 import pino from 'pino'
 import fs from 'fs'
@@ -29,28 +23,19 @@ import { initLoader } from './system/loader.js'
 import { routeMessage, routeEvent } from './system/router.js'
 
 // ─────────────────────────────────────────────
-// MANUAL AUTH STATE LOGIC — REPLACES useMultiFileAuthState
+// NODE VERSION GUARD
+// ─────────────────────────────────────────────
+const nodeVersion = process.versions.node
+const major = parseInt(nodeVersion.split('.')[0])
+if (major > 22) {
+  logger.warn('NODE', `Node ${nodeVersion} detected. Baileys not fully tested on Node >22.`)
+}
+
+// ─────────────────────────────────────────────
+// AUTH STATE - USING OFFICIAL useMultiFileAuthState
 // ─────────────────────────────────────────────
 const authFolder = './session'
 if (!fs.existsSync(authFolder)) fs.mkdirSync(authFolder, { recursive: true })
-
-const loadState = () => {
-  const CREDS_PATH = join(authFolder, 'creds.json')
-  try {
-    if (!fs.existsSync(CREDS_PATH)) throw new Error('No creds')
-    const creds = JSON.parse(fs.readFileSync(CREDS_PATH, 'utf-8'), BufferJSON.reviver)
-    return { state: { creds, keys: {} }, saveCreds: () => {
-      fs.writeFileSync(CREDS_PATH, JSON.stringify(state.creds, BufferJSON.replacer, 2))
-    } }
-  } catch {
-    return { state: { creds: initAuthCreds(), keys: {} }, saveCreds: () => {
-      fs.writeFileSync(CREDS_PATH, JSON.stringify(state.creds, BufferJSON.replacer, 2))
-    } }
-  }
-}
-
-const { state, saveCreds } = loadState()
-// ─────────────────────────────────────────────
 
 // ─────────────────────────────────────────────
 // 5 WAYS API LOADER — NEVER EXIT ON FAIL
@@ -121,7 +106,7 @@ let isStarting = false
 
 function loadSessionFromEnv() {
   const sessionId = process.env.SESSION_ID
-  if (!sessionId || !sessionId.startsWith('ASTRAX~')) return false
+  if (!sessionId ||!sessionId.startsWith('ASTRAX~')) return false
   try {
     const base64Data = sessionId.replace('ASTRAX~', '')
     const decoded = Buffer.from(base64Data, 'base64').toString('utf-8')
@@ -138,7 +123,7 @@ function loadSessionFromEnv() {
 let botThumbnail = null
 async function loadBotImage() {
   try {
-    const imageUrl = await db.get('botimage') || 'https://i.ibb.co/QvGY7dqB/file-00000e1107243ad54749c06fe2d80.png'
+    const imageUrl = await db.get('botimage') || 'https://i.ibb.co/QvGY7dqB/file-00000000e1107243ad54749c06fe2d80.png'
     const res = await nodeFetch(imageUrl)
     const arrayBuffer = await res.arrayBuffer()
     botThumbnail = Buffer.from(arrayBuffer)
@@ -160,32 +145,32 @@ async function sendConnectedMsg(sock) {
     const ramPercent = Math.floor((process.memoryUsage().heapUsed / process.memoryUsage().heapTotal) * 100)
 
     const msg = `
-> ╭─────〔 ASTRAX CORE 〕─────┈⊷
-> │ 𐂂 User: @${owner || 'Not Set'}
-> │ 𐂂 Prefix: ${prefix || '#'}
-> │ 𐂂 Mode: ${mode?.toUpperCase() || 'PUBLIC'}
-> │ 𐂂 Version: ${version || '7.0.0'}
-> │ 𐂂 Platform: ${platform || 'whatsapp'}
-> │ 𐂂 Speed: ${(Math.random() * 150 + 50).toFixed(4)} ms
-> │ 𐂂 Uptime: ${days}d ${hours}h ${mins}m
-> │ 𐂂 RAM: ${ramPercent}%
-> │ 𐂂 DB: ${db.mode}
-> ╰─────────────────────────⊷
+╭─────〔 ASTRAX CORE 〕─────┈⊷
+│ 𐂂 User: @${owner || 'Not Set'}
+│ 𐂂 Prefix: ${prefix || '#'}
+│ 𐂂 Mode: ${mode?.toUpperCase() || 'PUBLIC'}
+│ 𐂂 Version: ${version || '7.0.0'}
+│ 𐂂 Platform: ${platform || 'whatsapp'}
+│ 𐂂 Speed: ${(Math.random() * 150 + 50).toFixed(4)} ms
+│ 𐂂 Uptime: ${days}d ${hours}h ${mins}m
+│ 𐂂 RAM: ${ramPercent}%
+│ 𐂂 DB: ${db.mode}
+╰─────────────────────────⊷
 
-> Connected Successfully ✅
-> Type ${prefix || '#'}menu to start`
+Connected Successfully ✅
+Type ${prefix || '#'}menu to start`
 
     const contextInfo = {
       forwardingScore: 999, isForwarded: true,
-      externalAdReply: { 
-        title: 'AstraX', body: 'Operational ✅', mediaType: 1, 
-        thumbnail: botThumbnail, sourceUrl: ASTRAX_CHANNEL.link, 
-        showAdAttribution: true 
+      externalAdReply: {
+        title: 'AstraX', body: 'Operational ✅', mediaType: 1,
+        thumbnail: botThumbnail, sourceUrl: ASTRAX_CHANNEL.link,
+        showAdAttribution: true
       },
-      forwardedNewsletterMessageInfo: { 
-        newsletterJid: ASTRAX_CHANNEL.jid, 
-        newsletterName: ASTRAX_CHANNEL.name, 
-        serverMessageId: Math.floor(Math.random() * 100000) 
+      forwardedNewsletterMessageInfo: {
+        newsletterJid: ASTRAX_CHANNEL.jid,
+        newsletterName: ASTRAX_CHANNEL.name,
+        serverMessageId: Math.floor(Math.random() * 100000)
       }
     }
 
@@ -203,10 +188,24 @@ async function sendConnectedMsg(sock) {
   }
 }
 
+async function verifyBaileys() {
+  try {
+    const pkg = JSON.parse(fs.readFileSync('./node_modules/@whiskeysockets/baileys/package.json', 'utf-8'))
+    logger.info('BAILEYS', `Installed version: ${pkg.version}`)
+    if (!pkg.version.startsWith('6.7')) {
+      logger.warn('BAILEYS', `Expected 6.7.x but found ${pkg.version}. Imports may fail.`)
+    }
+  } catch (e) {
+    logger.error('BAILEYS', 'Cannot verify baileys version')
+  }
+}
+
 async function startBot() {
   if (isStarting) return
   isStarting = true
   logger.bot('STARTUP', 'Initializing...')
+
+  await verifyBaileys()
 
   try {
     await initDb()
@@ -218,8 +217,29 @@ async function startBot() {
     logger.error('STARTUP', 'Init failed, continuing...', e.message)
   }
 
-  const version = [2, 3000, 1026121747]
-  logger.info('BAILEYS', `Using WA v${version.join('.')}`)
+  let state, saveCreds
+  try {
+    const auth = await useMultiFileAuthState(authFolder)
+    state = auth.state
+    saveCreds = auth.saveCreds
+  } catch (e) {
+    logger.error('AUTH', 'Session corrupt, resetting...', e.message)
+    fs.rmSync(authFolder, { recursive: true, force: true })
+    fs.mkdirSync(authFolder, { recursive: true })
+    const auth = await useMultiFileAuthState(authFolder)
+    state = auth.state
+    saveCreds = auth.saveCreds
+  }
+
+  let version
+  try {
+    const { version: v } = await fetchLatestBaileysVersion()
+    version = v
+    logger.info('BAILEYS', `Using latest WA v${version.join('.')}`)
+  } catch (e) {
+    version = [2, 3000, 1026121747]
+    logger.warn('BAILEYS', 'Using fallback WA version - fetchLatest failed')
+  }
 
   const sock = makeWASocket({
     version,
@@ -243,7 +263,7 @@ async function startBot() {
 
     if (connection === 'close') {
       const code = lastDisconnect?.error?.output?.statusCode
-      if (code !== DisconnectReason.loggedOut) {
+      if (code!== DisconnectReason.loggedOut) {
         isStarting = false
         logger.warn('AUTH', 'Connection closed, retrying...')
         setTimeout(() => startBot(), 10000)
@@ -265,9 +285,9 @@ async function startBot() {
   })
 
   sock.ev.on('messages.upsert', async ({ messages, type }) => {
-    if (type !== 'notify') return
+    if (type!== 'notify') return
     for (const m of messages) {
-      if (m.key.remoteJid && AUTOREACT_GROUPS.includes(m.key.remoteJid) && !m.key.fromMe) {
+      if (m.key.remoteJid && AUTOREACT_GROUPS.includes(m.key.remoteJid) &&!m.key.fromMe) {
         try { await sock.sendMessage(m.key.remoteJid, { react: { text: '⚽', key: m.key } }) } catch (e) {}
       }
       await routeMessage(sock, m)
@@ -278,7 +298,12 @@ async function startBot() {
   sock.ev.on('call', async (calls) => { await routeEvent(sock, 'call', calls) })
 }
 
-process.on('uncaughtException', (err) => logger.error('CRASH', 'Uncaught', err.message))
-process.on('unhandledRejection', (err) => logger.error('CRASH', 'Rejection', err?.message))
+process.on('uncaughtException', (err) => {
+  logger.error('CRASH', 'Uncaught Exception - Bot continues', err.stack)
+})
+
+process.on('unhandledRejection', (reason, promise) => {
+  logger.error('CRASH', 'Unhandled Rejection - Bot continues', reason)
+})
 
 startBot()
