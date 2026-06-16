@@ -26,6 +26,7 @@ export const DEFAULTS = {
   // Mode
   mode: 'public', // public | private | groups | dm
   noPrefix: false, // true = "menu" works without prefix
+  autoStar: false, // true = star all bot messages
 
   // Box Style — Added for 30 styles
   boxStyle: '1', // Default Classic

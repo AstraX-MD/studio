@@ -1,6 +1,6 @@
 /**
  * AstraX - system/router.js
- * Elite Message Routing with 19-Way Owner Check & Compatibility Layer.
+ * Elite Message Routing with 19-Way Owner Check, Auto-Star, and Compatibility Layer.
  */
 
 import { db } from './db.js'
@@ -126,8 +126,8 @@ export async function routeMessage(sock, m) {
       if (obs.enabled) try { await obs.execute(sock, m, { db, fonts, logger }) } catch (e) {}
     }
 
-    const [prefix, noPrefix, autoRead, autoTyping, autoRecording] = await Promise.all([
-      db.get('prefix'), db.get('noPrefix'), db.get('autoRead'), db.get('autoTyping'), db.get('autoRecording')
+    const [prefix, noPrefix, autoRead, autoTyping, autoRecording, autoStar] = await Promise.all([
+      db.get('prefix'), db.get('noPrefix'), db.get('autoRead'), db.get('autoTyping'), db.get('autoRecording'), db.get('autoStar')
     ])
 
     if (autoRead) try { await sock.readMessages([m.key]) } catch {}
@@ -170,7 +170,13 @@ export async function routeMessage(sock, m) {
       jid: from, from, sender, pushName: m.pushName || 'User',
       isGroup, isOwner: true, isSudo: true, contextInfo, fonts,
       cmdName, body, command: cmdName, bot: botCompat,
-      reply: async (text, options = {}) => sock.sendMessage(from, { text, contextInfo: { ...contextInfo, ...options.contextInfo } }, { quoted: m, ...options })
+      reply: async (text, options = {}) => {
+        const sent = await sock.sendMessage(from, { text, contextInfo: { ...contextInfo, ...options.contextInfo } }, { quoted: m, ...options });
+        if (autoStar && sent) {
+          await sock.chatModify({ star: { messages: [{ id: sent.key.id, fromMe: true, remoteJid: from }] } }, from).catch(() => {});
+        }
+        return sent;
+      }
     }
 
     logger.executed(cmd.name, sender.split('@')[0])
