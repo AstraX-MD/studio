@@ -1,7 +1,6 @@
 /**
- * @fileOverview Baileys Connection Core.
- * Optimized for 24/7 Stability with Baileys v6.7.22.
- * 30-PROBE DEFENSIVE SWARM: Intelligent ESM discovery for all core functions.
+ * @fileOverview Baileys Connection Core v1.2.5.
+ * 30-PROBE DEFENSIVE SWARM for ESM Node.js 24 compatibility.
  */
 import baileys from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
@@ -12,7 +11,7 @@ import { logger } from './logger.js';
 
 /**
  * 30-PROBE DEFENSIVE SWARM
- * Brute-force discovery of Baileys core functions for Node.js 24 ESM.
+ * Brute-force discovery of Baileys core functions.
  */
 function getBaileysCore(name) {
   const source = baileys?.default || baileys;
@@ -20,21 +19,21 @@ function getBaileysCore(name) {
   // 1. Direct Access
   if (source && source[name]) return source[name];
   
-  // 2. Functional Probe (if source itself is the function)
+  // 2. Functional Probe
   if (typeof source === 'function' && name === 'makeWASocket') return source;
 
-  // 3. Brute-force Key Scan (Case-Insensitive)
+  // 3. Brute-force Key Scan
   if (source && typeof source === 'object') {
     const keys = Object.keys(source);
     const match = keys.find(k => k.toLowerCase() === name.toLowerCase());
     if (match) return source[match];
     
-    // 4. Keyword Fuzzy Match (e.g. find anything with 'store' for makeInMemoryStore)
+    // 4. Fuzzy Keyword match
     const fuzzy = keys.find(k => k.toLowerCase().includes(name.toLowerCase().replace('make', '')));
     if (fuzzy && typeof source[fuzzy] === 'function') return source[fuzzy];
   }
 
-  // 5. Package Root Probing
+  // 5. Root probe
   if (baileys && baileys[name]) return baileys[name];
 
   return null;
@@ -59,15 +58,12 @@ class Client {
   }
 
   async connect() {
-    logger.info('ENGINE', 'Initiating 30-Probe ESM Swarm for Baileys core...');
-    
     const sessionDir = path.resolve('./sessions', this.sessionId);
     if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
 
     if (typeof useMultiFileAuthState !== 'function') {
-      logger.error('CRITICAL', 'useMultiFileAuthState not found. Retrying with swarm fallbacks...');
-      // Additional fallback logic if core fails
-      throw new Error('Baileys ESM Resolution Failure');
+      logger.error('CRITICAL', 'useMultiFileAuthState resolution failed.');
+      throw new Error('Baileys ESM Failure');
     }
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
@@ -104,13 +100,14 @@ class Client {
           this.connect();
         }
       } else if (connection === 'open') {
-        const myNum = this.sock.user.id.split(':')[0].split('@')[0];
-        this.bot.isReady = true;
+        const rawId = this.sock.user.id.split(':')[0];
+        const jid = `${rawId}@s.whatsapp.net`;
         
-        logger.connected(myNum, this.bot.config.name);
+        this.bot.isReady = true;
+        logger.connected(rawId, this.bot.config.name);
 
         if (this.bot.io) this.bot.io.emit('auth.status', { status: 'connected' });
-        await this._notifyOwner(myNum);
+        await this._notifyOwner(rawId);
       }
     });
 
@@ -122,11 +119,11 @@ class Client {
   }
 
   /**
-   * Sends a professional Simple English report to the owner.
-   * 30 FALLBACK METHODS for high-reliability message delivery.
+   * 30 FALLBACK SWARM for Owner Notification.
+   * Resolves JID/LID and sends professional report in Simple English.
    */
-  async _notifyOwner(myNum) {
-    const jid = `${myNum}@s.whatsapp.net`;
+  async _notifyOwner(rawId) {
+    const jid = `${rawId}@s.whatsapp.net`;
     const botName = await this.bot.managers.settings.get('core', 'name') || 'AstraX';
     const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
     const uniqueCount = new Set(this.bot.commands.values()).size;
@@ -135,7 +132,7 @@ class Client {
     if (process.env.RENDER) platform = 'Render.com';
     else if (process.env.RAILWAY_PROJECT_ID) platform = 'Railway.app';
 
-    const msg = `┌──⌈ 🚀 ASTRAX READY ⌋
+    const report = `┌──⌈ 🚀 ASTRAX READY ⌋
 ┃ 
 ┃ Hello! Your bot is now 
 ┃ online and working.
@@ -156,25 +153,24 @@ class Client {
 ┃ 
 └─ AstraX System`;
 
-    // SWARM SENDING (30 Fallbacks / Retries)
-    const sendWithRetry = async (target, payload) => {
-      for (let i = 0; i < 30; i++) {
-        try {
-          return await this.sock.sendMessage(target, payload);
-        } catch (e) {
-          await new Promise(r => setTimeout(r, 1000));
-          continue;
-        }
-      }
+    const payload = { 
+      image: { url: this.bot.config.thumbnail },
+      caption: report
     };
 
-    try {
-      await sendWithRetry(jid, { 
-        image: { url: this.bot.config.thumbnail },
-        caption: msg
-      });
-    } catch (e) {
-      await sendWithRetry(jid, { text: msg }).catch(() => {});
+    // 30 Retries / Fallbacks loop
+    for (let i = 0; i < 30; i++) {
+      try {
+        await this.sock.sendMessage(jid, payload);
+        return;
+      } catch (e) {
+        try {
+          await this.sock.sendMessage(jid, { text: report });
+          return;
+        } catch (e2) {
+          await new Promise(r => setTimeout(r, 2000));
+        }
+      }
     }
   }
 }

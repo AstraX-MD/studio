@@ -1,5 +1,5 @@
 /**
- * @fileOverview AstraX Orchestrator with Master Dashboard API.
+ * @fileOverview AstraX Orchestrator.
  */
 import Client from './Client.js';
 import CommandLoader from '../loaders/CommandLoader.js';
@@ -13,6 +13,7 @@ import SettingsManager from '../managers/SettingsManager.js';
 import MemoryManager from '../managers/MemoryManager.js';
 import config from '../configs/default.js';
 import { logger } from './logger.js';
+import { initializeSystem } from './loader.js';
 
 class Bot {
   constructor() {
@@ -41,35 +42,32 @@ class Bot {
   }
 
   async init() {
-    logger.banner(
-      this.config.name, 
-      this.config.prefix, 
-      this.config.owners[0] || 'Not Set', 
-      this.db.activeProviderName,
-      '6.7.22'
-    );
-    
     try {
       await this.db.init();
-      logger.success('CORE', 'Database connected.');
+      
+      // Use the requested system loader pattern
+      await initializeSystem(this);
+      
+      logger.banner(
+        this.config.name, 
+        this.config.prefix, 
+        this.config.owners[0] || 'Not Set', 
+        this.db.activeProviderName,
+        '6.7.22'
+      );
 
       await CommandLoader.load(this);
       await EventLoader.load(this);
       await PluginLoader.load(this);
 
       await this.client.connect();
-      
       this.isReady = true;
-      logger.ramStats();
       
     } catch (error) {
       logger.error('BOOT', `Startup failed: ${error.message}`);
     }
   }
 
-  /**
-   * Provides data for Dashboard
-   */
   getCommandManifest() {
     const manifest = [];
     const seen = new Set();

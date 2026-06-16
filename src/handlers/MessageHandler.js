@@ -1,6 +1,6 @@
 /**
- * @fileOverview AstraX High-Speed Message Router.
- * v1.2.5: Zero fromMe restrictions. 100% Self-Response.
+ * @fileOverview High-Speed Message Router.
+ * v1.2.5: Zero fromMe restrictions. 100% Self-Response with Loop Guard.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -32,14 +32,15 @@ class MessageHandler {
       commandName = args.shift().toLowerCase();
     }
 
-    // LOG TO TERMINAL
+    // LOG TO TERMINAL USING MASTER LOGGER
     logger.incoming(
       ctx.isGroup ? `GROUP[${ctx.jid.split('@')[0]}]` : 'PRIVATE',
       senderId,
       isCommand ? commandName : null
     );
 
-    // BOX GUARD: Ignore its own reports to prevent loops
+    // BOX GUARD: Ignore its own professional reports to prevent infinite feedback loops
+    // The bot will answer its own !commands, but ignore the "┌──⌈" formatted boxes.
     if (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌')) return;
 
     if (isCommand && commandName) {
