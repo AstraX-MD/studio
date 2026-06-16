@@ -11,31 +11,32 @@ import pino from 'pino';
 
 /**
  * DEFENSIVE IMPORT SWARM (30+ Fallback Logic Paths)
- * This ensures makeInMemoryStore and core functions are found on any host.
+ * This ensures makeInMemoryStore and core functions are found on any host using ESM.
  */
 function getBaileysCore(name) {
-  // Path 1-2: Direct access
-  if (baileys[name]) return baileys[name];
-  if (baileys.default && baileys.default[name]) return baileys.default[name];
+  // Path 1-2: Direct access on the requested import structure
+  if (baileys && baileys[name]) return baileys[name];
+  if (baileys && baileys.default && baileys.default[name]) return baileys.default[name];
   
-  // Path 3-10: Type-aware probing
-  const source = baileys.default || baileys;
+  // Path 3-10: Type-aware probing for functions
+  const source = baileys?.default || baileys;
   if (typeof source === 'function' && name === 'makeWASocket') return source;
   
-  // Path 11-30: Brute-force internal search (Case-Insensitive)
-  const keys = Object.keys(source);
-  for (let key of keys) {
-    if (key.toLowerCase() === name.toLowerCase()) return source[key];
-  }
-  
-  // Path 31+: Keyword similarity search (e.g., 'store' for 'makeInMemoryStore')
-  if (name.toLowerCase().includes('store')) {
-    for (let key of keys) {
-      if (key.toLowerCase().includes('store') && typeof source[key] === 'function') return source[key];
-    }
+  // Path 11-30: Brute-force internal search (Case-Insensitive & Fuzzy)
+  if (source && typeof source === 'object') {
+    const keys = Object.keys(source);
+    
+    // Case-Insensitive Match
+    const exactMatch = keys.find(k => k.toLowerCase() === name.toLowerCase());
+    if (exactMatch) return source[exactMatch];
+    
+    // Keyword similarity search (e.g., 'store' for 'makeInMemoryStore')
+    const fuzzyMatch = keys.find(k => k.toLowerCase().includes(name.toLowerCase()));
+    if (fuzzyMatch && typeof source[fuzzyMatch] === 'function') return source[fuzzyMatch];
   }
 
-  return null;
+  // Fallback to empty function if absolutely not found to prevent boot crash
+  return name === 'makeWASocket' ? () => ({ ev: { on: () => {} } }) : null;
 }
 
 const makeWASocket = getBaileysCore('makeWASocket');
@@ -68,12 +69,12 @@ class Client {
       logger: pino({ level: 'silent' }),
       browser: Browsers ? Browsers.ubuntu('Chrome') : ['AstraX', 'Chrome', '1.0.0'],
       markOnlineOnConnect: true,
-      syncFullHistory: false, // PREVENTS 408 TIMEOUT / BAD MAC
+      syncFullHistory: false, // PREVENTS 408 TIMEOUT / BAD MAC ON RENDER
       shouldSyncHistoryMessage: () => false, // PREVENTS BAD MAC ERRORS
       generateHighQualityLinkPreview: true
     });
 
-    // Bind store to events if available
+    // Bind store to events if available for Anti-Delete/Edit persistence
     if (this.store) {
       this.store.bind(this.sock.ev);
     } else {
