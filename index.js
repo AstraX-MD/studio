@@ -1,7 +1,6 @@
 /**
- * AstraX Enterprise - index.js
- * High-speed entry point with Express port binding and 30-probe swarm.
- * Optimized for Render + Zero Port Errors.
+ * AstraX - index.js
+ * Main entry point — Express port-binding, Baileys 30-Probe Swarm, Owner Swarm.
  */
 
 import 'dotenv/config'
@@ -22,37 +21,37 @@ const __filename = fileURLToPath(import.meta.url)
 const __dirname = dirname(__filename)
 
 // ─────────────────────────────────────────────
-// BAILEYS DEFENSIVE SWARM PROBE (30+ WAYS)
-// ─────────────────────────────────────────────
-function probe(pkg, name) {
-  const source = pkg?.default || pkg;
-  if (source && source[name]) return source[name];
-  if (typeof source === 'function' && name === 'makeWASocket') return source;
-  if (source && typeof source === 'object') {
-    const keys = Object.keys(source);
-    const match = keys.find(k => k.toLowerCase() === name.toLowerCase());
-    if (match) return source[match];
-  }
-  return null;
-}
-
-// ─────────────────────────────────────────────
-// EXPRESS SERVER FOR RENDER
+// EXPRESS FOR RENDER
 // ─────────────────────────────────────────────
 const app = express()
 const PORT = process.env.PORT || 10000
 
 app.get('/', (req, res) => {
-  res.json({ status: 'online', bot: 'AstraX Enterprise', uptime: Math.floor(process.uptime()) })
+  res.json({ status: 'online', bot: 'AstraX', uptime: Math.floor(process.uptime()) })
 })
 
 app.listen(PORT, () => {
-  logger.success('SERVER', `Port ${PORT} bound for Render`)
+  logger.success('SERVER', `Port ${PORT} opened for Render`)
 })
 
 setInterval(() => {
   fetch(`http://localhost:${PORT}`).catch(() => {})
 }, 14 * 60 * 1000)
+
+// ─────────────────────────────────────────────
+// BAILEYS 30-PROBE SWARM
+// ─────────────────────────────────────────────
+function probe(pkg, name) {
+  const src = pkg?.default || pkg
+  if (src?.[name]) return src[name]
+  if (typeof src === 'function' && name === 'makeWASocket') return src
+  if (src && typeof src === 'object') {
+    const keys = Object.keys(src)
+    const match = keys.find(k => k.toLowerCase() === name.toLowerCase())
+    if (match) return src[match]
+  }
+  return null
+}
 
 let isStarting = false
 
@@ -60,25 +59,24 @@ async function startBot() {
   if (isStarting) return
   isStarting = true
 
-  logger.bot('STARTUP', 'Initiating AstraX Swarm...')
+  logger.bot('STARTUP', 'Initiating AstraX Resilience Swarm...')
 
   await initDb()
   const pluginStats = await initLoader()
 
-  const makeWASocket = probe(baileys, 'makeWASocket');
-  const useMultiFileAuthState = probe(baileys, 'useMultiFileAuthState');
-  const DisconnectReason = probe(baileys, 'DisconnectReason');
-  const Browsers = probe(baileys, 'Browsers');
-  const fetchLatestBaileysVersion = probe(baileys, 'fetchLatestBaileysVersion');
+  const makeWASocket = probe(baileys, 'makeWASocket')
+  const useMultiFileAuthState = probe(baileys, 'useMultiFileAuthState')
+  const DisconnectReason = probe(baileys, 'DisconnectReason')
+  const Browsers = probe(baileys, 'Browsers')
+  const fetchLatestBaileysVersion = probe(baileys, 'fetchLatestBaileysVersion')
 
   if (!useMultiFileAuthState || !makeWASocket) {
-    logger.error('CRASH', 'Baileys core functions unresolved. Swarm failed.')
+    logger.error('CRASH', 'Baileys core unresolved. Swarm failed.')
     process.exit(1)
   }
 
   const { version } = await fetchLatestBaileysVersion()
-  const SESSION_DIR = join(__dirname, 'sessions')
-  const { state, saveCreds } = await useMultiFileAuthState(SESSION_DIR)
+  const { state, saveCreds } = await useMultiFileAuthState(join(__dirname, 'sessions'))
 
   const sock = makeWASocket({
     version,
@@ -95,7 +93,7 @@ async function startBot() {
   sock.ev.on('connection.update', async (update) => {
     const { connection, lastDisconnect, qr } = update
     if (qr) {
-      logger.info('QR', 'Scan to login:')
+      logger.info('QR', 'Scan this code:')
       qrcode.generate(qr, { small: true })
     }
 
@@ -110,6 +108,7 @@ async function startBot() {
     } else if (connection === 'open') {
       const botNumber = sock.user.id.split(':')[0].split('@')[0]
       await db.set('owner', botNumber)
+      
       const botname = await db.get('botname') || 'AstraX'
       const prefix = await db.get('prefix') || '!'
 
