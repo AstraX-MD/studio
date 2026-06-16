@@ -1,6 +1,7 @@
 /**
  * @fileOverview Baileys Connection Core.
- * Optimized for 24/7 Stability with ESM compatibility.
+ * v1.2.5: Optimized for 24/7 Stability with ESM compatibility.
+ * FIXED: Standardized makeInMemoryStore access to prevent boot crashes.
  */
 import pkg from '@whiskeysockets/baileys';
 const { 
@@ -39,8 +40,8 @@ class Client {
       logger: pino({ level: 'silent' }),
       browser: Browsers.ubuntu('Chrome'),
       markOnlineOnConnect: true,
-      syncFullHistory: false, 
-      shouldSyncHistoryMessage: () => false,
+      syncFullHistory: false, // SOLVES 408 TIMEOUT
+      shouldSyncHistoryMessage: () => false, // PREVENTS BAD MAC ERRORS
       generateHighQualityLinkPreview: true
     });
 

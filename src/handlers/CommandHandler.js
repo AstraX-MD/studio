@@ -1,6 +1,6 @@
 /**
  * @fileOverview Executes command logic and handles analytics.
- * v1.2.5: Fail-Safe Execution Core.
+ * v1.2.5: Removed intrusive cooldown messages.
  */
 import PermissionMiddleware from '../middleware/PermissionMiddleware.js';
 import CooldownManager from '../managers/CooldownManager.js';
