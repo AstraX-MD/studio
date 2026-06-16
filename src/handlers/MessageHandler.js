@@ -31,24 +31,16 @@ class MessageHandler {
       const fullContent = ctx.text.slice(prefix.length).trim();
       args = fullContent.split(/ +/);
       commandName = args.shift().toLowerCase();
-    } else {
-      const parts = ctx.text.trim().split(/ +/);
-      if (parts.length > 0) {
-        const possibleCmd = parts.shift().toLowerCase();
-        if (this.bot.commands.has(possibleCmd)) {
-          isCommand = true;
-          commandName = possibleCmd;
-          args = parts;
-        }
-      }
     }
 
-    // 4. Clean Logging
+    // 4. Clean Colored Logging
+    // Cyan for MESSAGE, Green for COMMAND
     const label = isCommand ? '\x1b[32m[COMMAND]\x1b[0m' : '\x1b[36m[MESSAGE]\x1b[0m';
     const content = ctx.text ? ctx.text.substring(0, 40) : '[MEDIA]';
     console.log(`${label} ${chatType} @${sender} | ${content}${content.length > 39 ? '...' : ''}`);
 
     // 5. Recursive Loop Guard
+    // Allow bot to trigger commands but prevent it from answering its own boxed reports
     if (ctx.fromMe && (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌'))) return;
 
     // 6. Execution
