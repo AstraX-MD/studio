@@ -83,16 +83,20 @@ async function wardenCheck(sock, m, body, isGroup, from, sender) {
   const owner = await db.get('owner')
   if (sender.includes(owner)) return false
 
+  // Anti-Link
   if (await db.get(`antilink:${jid}`) === 'on' && (body.includes('chat.whatsapp.com') || body.includes('wa.me/'))) {
     await sock.sendMessage(from, { delete: m.key }); return true
   }
+  // Anti-Word
   const aw = await db.get(`antiword:${jid}`)
   if (aw?.mode === 'on' && aw.words?.some(w => body.toLowerCase().includes(w))) {
     await sock.sendMessage(from, { delete: m.key }); return true
   }
+  // Anti-Sticker
   if (m.message.stickerMessage && await db.get(`antisticker:${jid}`) === 'on') {
     await sock.sendMessage(from, { delete: m.key }); return true
   }
+  // Anti-Audio
   if (m.message.audioMessage && await db.get(`antiaudio:${jid}`) === 'on') {
     await sock.sendMessage(from, { delete: m.key }); return true
   }
@@ -120,8 +124,9 @@ export async function routeMessage(sock, m) {
       if (obs.enabled) try { await obs.execute(sock, m, { db, fonts, logger }) } catch (e) {}
     }
 
-    const [prefix, noPrefix, autoRead, autoTyping, autoRecording, autoStar] = await Promise.all([
-      db.get('prefix'), db.get('noPrefix'), db.get('autoRead'), db.get('autoTyping'), db.get('autoRecording'), db.get('autoStar')
+    // ─── FETCH DYNAMIC CONFIG ───
+    const [prefix, noPrefix, autoRead, autoTyping, autoRecording, autoStar, botName, botImage] = await Promise.all([
+      db.get('prefix'), db.get('noPrefix'), db.get('autoRead'), db.get('autoTyping'), db.get('autoRecording'), db.get('autoStar'), db.get('botname'), db.get('botimage')
     ])
 
     if (autoRead) try { await sock.readMessages([m.key]) } catch {}
@@ -151,10 +156,10 @@ export async function routeMessage(sock, m) {
           },
           set: async (cat, key, val, j) => await db.set(key, val)
         },
-        roles: { getRole: async () => 10 }, 
+        roles: { getRole: async () => 10 }, // Universal Bypass
         memory: { add: () => {}, get: () => [] }
       },
-      commands, config: { name: await db.get('botname') || 'AstraX', thumbnail: await db.get('botimage') }
+      commands, config: { name: botName || 'AstraX', thumbnail: botImage }
     }
 
     const ctx = {

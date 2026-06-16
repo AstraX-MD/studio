@@ -12,7 +12,7 @@ export default {
   aliases: ["help", "commands", "h"],
   category: "utility",
   description: "Display the premium vertical command menu.",
-  execute: async (sock, m, args, { db, prefix, pushName, sender }) => {
+  execute: async (sock, m, args, { db, pushName, sender }) => {
     try {
       // 1. Fetch System Stats
       const uptimeRaw = process.uptime();
@@ -30,10 +30,12 @@ export default {
       const barFull = Math.floor(ramPercent / 10);
       const ramBar = '█'.repeat(barFull) + '░'.repeat(10 - barFull);
 
-      const platform = process.env.RENDER ? "🚀 Render" : os.platform() === 'linux' ? "🐧 Linux" : "💻 Local";
+      // Fetch dynamic config from DB
+      const prefix = await db.get('prefix') || '?';
       const botName = await db.get('botname') || "ASTRAX";
       const owner = await db.get('owner') || "AstraRoot";
       const mode = await db.get('mode') || "Public";
+      const platform = process.env.RENDER ? "🚀 Render" : os.platform() === 'linux' ? "🐧 Linux" : "💻 Local";
       const time = new Date().toLocaleTimeString('en-GB', { timeZone: 'Africa/Dar_es_Salaam' });
 
       // 2. Organize Commands by Category
