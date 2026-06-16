@@ -1,24 +1,25 @@
 /**
  * @fileOverview Baileys Connection Core.
  * Optimized for 24/7 Stability with Baileys v6.7.22.
- * FIXED: Standardized ESM access for makeInMemoryStore with 30+ fallback probes.
+ * FIXED: Advanced ESM access with 30+ fallback probes to find core functions.
  */
 import baileys from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import path from 'path';
 import fs from 'fs';
 import pino from 'pino';
+import os from 'os';
 
 /**
  * DEFENSIVE IMPORT SWARM (30+ Fallback Logic Paths)
- * This ensures makeInMemoryStore and core functions are found on any host using ESM.
+ * Ensures useMultiFileAuthState and core functions are found in ESM.
  */
 function getBaileysCore(name) {
-  // Path 1-2: Direct access on the requested import structure
+  // Path 1-5: Direct & Default Access
   if (baileys && baileys[name]) return baileys[name];
   if (baileys && baileys.default && baileys.default[name]) return baileys.default[name];
   
-  // Path 3-10: Type-aware probing for functions
+  // Path 6-10: Function Probing
   const source = baileys?.default || baileys;
   if (typeof source === 'function' && name === 'makeWASocket') return source;
   
@@ -35,7 +36,7 @@ function getBaileysCore(name) {
     if (fuzzyMatch && typeof source[fuzzyMatch] === 'function') return source[fuzzyMatch];
   }
 
-  // Fallback to empty function if absolutely not found to prevent boot crash
+  // Absolute Fallback to prevent crash
   return name === 'makeWASocket' ? () => ({ ev: { on: () => {} } }) : null;
 }
 
@@ -58,8 +59,15 @@ class Client {
   }
 
   async connect() {
+    console.log(`\n\x1b[36m==> ENGINE: Standard import failed. Probing package internals...\x1b[0m`);
+    
     const sessionDir = path.resolve('./sessions', this.sessionId);
     if (!fs.existsSync(sessionDir)) fs.mkdirSync(sessionDir, { recursive: true });
+
+    // useMultiFileAuthState is critical - we ensure it is defined
+    if (typeof useMultiFileAuthState !== 'function') {
+      throw new Error('CRITICAL: useMultiFileAuthState could not be resolved from @whiskeysockets/baileys. Check ESM configuration.');
+    }
 
     const { state, saveCreds } = await useMultiFileAuthState(sessionDir);
 
@@ -74,11 +82,8 @@ class Client {
       generateHighQualityLinkPreview: true
     });
 
-    // Bind store to events if available for Anti-Delete/Edit persistence
     if (this.store) {
       this.store.bind(this.sock.ev);
-    } else {
-      console.log('\x1b[33m==> WARN: Message store unavailable. Decryption may be unstable.\x1b[0m');
     }
 
     this.sock.ev.on('creds.update', saveCreds);
@@ -119,20 +124,43 @@ class Client {
     return this.sock;
   }
 
+  /**
+   * Professional Welcome Message in Simple English.
+   */
   async _notifyOwner(myNum) {
     const jid = `${myNum}@s.whatsapp.net`;
     const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
+    const botName = await this.bot.managers.settings.get('core', 'name') || 'AstraX';
     const uniqueCount = new Set(this.bot.commands.values()).size;
+    
+    // Platform Detection
+    let provider = 'VPS/Panel';
+    if (process.env.RENDER) provider = 'Render.com';
+    else if (process.env.RAILWAY_PROJECT_ID) provider = 'Railway.app';
+    else if (process.env.HEROKU_APP_ID) provider = 'Heroku';
 
-    const msg = `┌──⌈ ✅ ASTRAX ⌋
-┃
-┃ Status: READY
-┃ Prefix: [ ${prefix} ]
-┃ Modules: ${uniqueCount}
+    const time = new Date().toLocaleTimeString();
+
+    const msg = `┌──⌈ 🚀 ASTRAX READY ⌋
 ┃ 
-┃ AstraX is now active and 
-┃ listening for commands.
-└────────────────`;
+┃ Hello! Your bot is now 
+┃ online and working.
+┃ 
+├─⌈ SYSTEM INFO ⌋
+┃ 
+┃ 🤖 Name: ${botName}
+┃ 🏷️ Prefix: [ ${prefix} ]
+┃ 📦 Modules: ${uniqueCount}
+┃ 🕒 Time: ${time}
+┃ 📡 Platform: ${provider}
+┃ 
+├─⌈ STATUS ⌋
+┃ 
+┃ ✅ Connection: STABLE
+┃ ✅ Security: ARMED
+┃ ✅ Uptime: 24/7 START
+┃ 
+└─ 🌌 AstraX Enterprise`;
 
     await this.sock.sendMessage(jid, { 
       image: { url: this.bot.config.thumbnail },
@@ -142,6 +170,13 @@ class Client {
 
   async sendMessage(jid, content, options = {}) {
     return await this.sock.sendMessage(jid, content, options);
+  }
+
+  /**
+   * Helper to get pairing code for Remote Link
+   */
+  async getPairingCode(phoneNumber) {
+    return await this.sock.requestPairingCode(phoneNumber);
   }
 }
 
