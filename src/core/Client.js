@@ -7,8 +7,7 @@ import makeWASocket, {
   useMultiFileAuthState, 
   DisconnectReason, 
   Browsers,
-  fetchLatestBaileysVersion,
-  makeInMemoryStore
+  fetchLatestBaileysVersion
 } from '@whiskeysockets/baileys';
 import { Boom } from '@hapi/boom';
 import path from 'path';
@@ -20,7 +19,6 @@ class Client {
     this.bot = bot;
     this.sock = null;
     this.sessionId = bot.config.sessionName || 'AstraX-Main';
-    this.store = makeInMemoryStore({ logger: pino({ level: 'silent' }) });
   }
 
   async connect() {
@@ -74,7 +72,6 @@ class Client {
       },
     });
 
-    this.store?.bind(this.sock.ev);
     this.sock.ev.on('creds.update', saveCreds);
 
     this.sock.ev.on('connection.update', async (update) => {
