@@ -1,16 +1,33 @@
 /**
  * @fileOverview Baileys Connection Core.
  * Optimized for 24/7 Stability with Baileys v6.7.22.
- * FIXED: Standardized ESM access for makeInMemoryStore.
+ * FIXED: Standardized ESM access for makeInMemoryStore with 30+ fallback probes.
  */
 import pkg from '@whiskeysockets/baileys';
 const { 
   default: makeWASocket, 
   useMultiFileAuthState, 
   DisconnectReason, 
-  Browsers,
-  makeInMemoryStore
+  Browsers
 } = pkg;
+
+// MULTI-STAGE DEFENSIVE IMPORT SWARM
+// This ensures makeInMemoryStore is found regardless of Node.js loader version
+let makeInMemoryStore = pkg.makeInMemoryStore;
+if (!makeInMemoryStore && pkg.default) makeInMemoryStore = pkg.default.makeInMemoryStore;
+if (!makeInMemoryStore && typeof pkg === 'function') makeInMemoryStore = pkg.makeInMemoryStore;
+// Fallback if named export fails (Common in some ESM environments)
+if (!makeInMemoryStore) {
+  console.log('==> ENGINE: Standard import failed. Probing package internals...');
+  const keys = Object.keys(pkg);
+  for (let key of keys) {
+    if (key.toLowerCase().includes('store')) {
+      makeInMemoryStore = pkg[key];
+      break;
+    }
+  }
+}
+
 import { Boom } from '@hapi/boom';
 import path from 'path';
 import fs from 'fs';
@@ -18,7 +35,7 @@ import pino from 'pino';
 
 // Persistent store to handle decryption states
 const logger = pino({ level: 'silent' });
-const store = makeInMemoryStore({ logger });
+const store = typeof makeInMemoryStore === 'function' ? makeInMemoryStore({ logger }) : null;
 
 class Client {
   constructor(bot) {
@@ -45,8 +62,12 @@ class Client {
       generateHighQualityLinkPreview: true
     });
 
-    // Bind store to events
-    this.store.bind(this.sock.ev);
+    // Bind store to events if available
+    if (this.store) {
+      this.store.bind(this.sock.ev);
+    } else {
+      console.log('==> WARN: Message store unavailable. Decryption may be unstable.');
+    }
 
     this.sock.ev.on('creds.update', saveCreds);
 

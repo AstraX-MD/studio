@@ -3,101 +3,105 @@
 <head>
     <meta charset="UTF-8">
     <meta name="viewport" content="width=device-width, initial-scale=1.0">
-    <title>AstraX | Master Console</title>
+    <title>AstraX Master Console</title>
     <script src="https://cdn.tailwindcss.com"></script>
-    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@400;600;800&family=JetBrains+Mono&display=swap" rel="stylesheet">
+    <link href="https://fonts.googleapis.com/css2?family=Inter:wght@300;400;600;800&family=Space+Grotesk:wght@500;700&display=swap" rel="stylesheet">
     <style>
         body { font-family: 'Inter', sans-serif; background: #050406; color: #fff; }
-        .tab-btn { padding: 12px 20px; font-weight: 600; color: #888; border-bottom: 2px solid transparent; transition: 0.3s; }
-        .tab-btn.active { color: #9747FF; border-bottom: 2px solid #9747FF; }
-        .card { background: #0e0b13; border: 1px solid #1f1f1f; border-radius: 12px; padding: 20px; }
-        .input-field { background: #16121d; border: 1px solid #221d2b; border-radius: 8px; padding: 10px; width: 100%; color: #fff; }
-        .btn-save { background: #9747FF; padding: 12px; border-radius: 8px; font-weight: 800; width: 100%; margin-top: 10px; }
+        .tab-btn.active { border-bottom: 3px solid #9747FF; color: #9747FF; }
+        .glass { background: rgba(255, 255, 255, 0.03); border: 1px solid rgba(255, 255, 255, 0.05); }
+        .glow { box-shadow: 0 0 15px rgba(151, 71, 255, 0.3); }
     </style>
 </head>
 <body class="p-4 max-w-lg mx-auto">
 
     <!-- Header -->
-    <div class="flex items-center gap-4 mb-8">
-        <div class="w-12 h-12 bg-[#9747FF] rounded-xl flex items-center justify-center font-black text-2xl">A</div>
-        <div>
-            <h1 class="text-2xl font-black tracking-tighter">ASTRAX</h1>
-            <p class="text-xs text-gray-500 font-mono uppercase">Master Console v1.2.5</p>
+    <header class="text-center mb-8 pt-4">
+        <div class="w-16 h-16 bg-purple-600 rounded-2xl mx-auto flex items-center justify-center glow mb-4">
+            <svg class="w-8 h-8 text-white" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M13 10V3L4 14h7v7l9-11h-7z"></path></svg>
         </div>
-    </div>
+        <h1 class="text-4xl font-bold font-['Space_Grotesk'] tracking-tighter">ASTRAX</h1>
+        <p class="text-gray-500 text-sm">Expert Control Panel</p>
+    </header>
 
     <!-- Navigation Tabs -->
-    <div class="flex border-b border-[#1f1f1f] mb-6 overflow-x-auto no-scrollbar">
-        <button class="tab-btn active" onclick="showTab('status')">HOME</button>
-        <button class="tab-btn" onclick="showTab('features')">SAFETY</button>
-        <button class="tab-btn" onclick="showTab('commands')">SEARCH</button>
-        <button class="tab-btn" onclick="showTab('analytics')">STATS</button>
+    <div class="flex justify-between border-b border-white/10 mb-8 overflow-x-auto no-scrollbar">
+        <button onclick="showTab('status')" id="btn-status" class="tab-btn active px-4 py-2 font-semibold transition-all">Health</button>
+        <button onclick="showTab('safety')" id="btn-safety" class="tab-btn px-4 py-2 font-semibold transition-all">Safety</button>
+        <button onclick="showTab('search')" id="btn-search" class="tab-btn px-4 py-2 font-semibold transition-all">Search</button>
+        <button onclick="showTab('stats')" id="btn-stats" class="tab-btn px-4 py-2 font-semibold transition-all">History</button>
     </div>
 
-    <!-- Tab 1: Status & Settings -->
-    <div id="tab-status" class="tab-content space-y-4">
-        <div class="card grid grid-cols-2 gap-4">
-            <div>
-                <p class="text-[10px] text-gray-500 uppercase font-mono">Owner</p>
-                <p id="owner-num" class="font-bold">...</p>
+    <!-- Tab 1: Health -->
+    <div id="tab-status" class="tab-content space-y-6">
+        <div class="grid grid-cols-2 gap-4">
+            <div class="glass p-4 rounded-2xl">
+                <p class="text-gray-500 text-xs uppercase font-bold">Owner</p>
+                <p id="owner-num" class="text-lg font-mono text-purple-400">Loading...</p>
             </div>
-            <div>
-                <p class="text-[10px] text-gray-500 uppercase font-mono">Speed</p>
-                <p id="ping-val" class="font-bold text-green-500">...</p>
-            </div>
-        </div>
-
-        <div class="card">
-            <h3 class="font-bold mb-4">Edit Bot Identity</h3>
-            <div class="space-y-3">
-                <div>
-                    <label class="text-[10px] text-gray-500 uppercase">Bot Name</label>
-                    <input id="in-name" type="text" class="input-field" placeholder="AstraX">
-                </div>
-                <div>
-                    <label class="text-[10px] text-gray-500 uppercase">Prefix</label>
-                    <input id="in-prefix" type="text" class="input-field" placeholder="!">
-                </div>
-                <div>
-                    <label class="text-[10px] text-gray-500 uppercase">Bot Image (Link)</label>
-                    <input id="in-image" type="text" class="input-field" placeholder="https://...">
-                </div>
-                <button class="btn-save" onclick="updateConfig()">SAVE CHANGES</button>
+            <div class="glass p-4 rounded-2xl">
+                <p class="text-gray-500 text-xs uppercase font-bold">Speed</p>
+                <p id="bot-ping" class="text-lg font-mono text-green-400">14ms</p>
             </div>
         </div>
+
+        <div class="glass p-6 rounded-3xl space-y-6">
+            <h3 class="text-xl font-bold font-['Space_Grotesk']">Quick Settings</h3>
+            
+            <div class="space-y-2">
+                <label class="text-xs text-gray-400 font-bold uppercase">Bot Display Name</label>
+                <input id="set-name" type="text" placeholder="AstraX" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-purple-500">
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-xs text-gray-400 font-bold uppercase">Command Prefix</label>
+                <input id="set-prefix" type="text" placeholder="!" class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-purple-500">
+            </div>
+
+            <div class="space-y-2">
+                <label class="text-xs text-gray-400 font-bold uppercase">Picture Link</label>
+                <input id="set-pic" type="text" placeholder="https://..." class="w-full bg-white/5 border border-white/10 rounded-xl p-3 outline-none focus:border-purple-500">
+            </div>
+
+            <button onclick="updateConfig()" class="w-full bg-purple-600 hover:bg-purple-500 text-white font-bold p-4 rounded-2xl transition-all active:scale-95">Save Changes</button>
+        </div>
     </div>
 
-    <!-- Tab 2: Feature Toggles -->
-    <div id="tab-features" class="tab-content hidden space-y-3">
-        <div id="feature-list">
-            <!-- Toggles will be injected here -->
+    <!-- Tab 2: Safety -->
+    <div id="tab-safety" class="tab-content hidden space-y-4">
+        <div id="feature-list" class="space-y-3">
+            <!-- Features populated by JS -->
         </div>
     </div>
 
-    <!-- Tab 3: Command Directory -->
-    <div id="tab-commands" class="tab-content hidden space-y-4">
-        <div class="flex gap-2">
-            <input id="cmd-search" type="text" class="input-field" placeholder="Search commands...">
-            <button onclick="searchCmds()" class="bg-[#1f1f1f] px-4 rounded-lg">FIND</button>
+    <!-- Tab 3: Search -->
+    <div id="tab-search" class="tab-content hidden space-y-4">
+        <div class="relative">
+            <input id="search-box" onkeyup="searchCommands()" type="text" placeholder="Search commands..." class="w-full bg-white/5 border border-white/10 rounded-2xl p-4 pl-12 outline-none focus:border-purple-500">
+            <svg class="w-6 h-6 absolute left-4 top-4 text-gray-500" fill="none" stroke="currentColor" viewBox="0 0 24 24"><path stroke-linecap="round" stroke-linejoin="round" stroke-width="2" d="M21 21l-6-6m2-5a7 7 0 11-14 0 7 7 0 0114 0z"></path></svg>
         </div>
-        <div id="cmd-list" class="space-y-2">
-            <!-- Commands injected here -->
+        <div id="command-list" class="space-y-3 max-h-[60vh] overflow-y-auto no-scrollbar">
+            <!-- Commands populated by JS -->
         </div>
     </div>
 
-    <!-- Tab 4: Analytics -->
-    <div id="tab-analytics" class="tab-content hidden space-y-4">
-        <div class="card text-center">
-            <p class="text-4xl font-black text-[#9747FF]" id="total-exec">0</p>
-            <p class="text-[10px] text-gray-500 uppercase font-mono">Total Commands Sent</p>
+    <!-- Tab 4: History -->
+    <div id="tab-stats" class="tab-content hidden space-y-6">
+        <div class="glass p-6 rounded-3xl text-center">
+            <p id="total-exec" class="text-5xl font-extrabold text-purple-500 font-['Space_Grotesk']">0</p>
+            <p class="text-gray-400 text-sm mt-2 uppercase tracking-widest font-bold">Total Commands Sent</p>
         </div>
-        <div class="card">
-            <h3 class="font-bold mb-2">Most Used</h3>
-            <div id="top-cmds" class="space-y-1 text-sm"></div>
+
+        <div class="space-y-4">
+            <h4 class="text-sm font-bold uppercase text-gray-500 pl-2">Top Features</h4>
+            <div id="most-used" class="space-y-2">
+                <!-- Most used populated by JS -->
+            </div>
         </div>
-        <div class="card bg-black border-red-900/30">
-            <h3 class="font-bold text-red-500 mb-2">Failed Tasks</h3>
-            <p id="fail-count" class="font-mono text-2xl">0</p>
+
+        <div class="glass p-4 rounded-2xl border-l-4 border-red-500 bg-red-500/5">
+            <p class="text-gray-400 text-xs">FAILED COMMANDS</p>
+            <p id="failed-count" class="text-xl font-bold">0</p>
         </div>
     </div>
 
@@ -106,64 +110,104 @@
             document.querySelectorAll('.tab-content').forEach(t => t.classList.add('hidden'));
             document.querySelectorAll('.tab-btn').forEach(b => b.classList.remove('active'));
             document.getElementById('tab-' + id).classList.remove('hidden');
-            event.currentTarget.classList.add('active');
+            document.getElementById('btn-' + id).classList.add('active');
         }
 
-        async function refreshData() {
-            const status = await fetch('/api/status').then(r => r.json());
-            document.getElementById('owner-num').innerText = '+' + status.owner;
-            document.getElementById('ping-val').innerText = 'STABLE';
-            document.getElementById('in-name').value = status.botName;
-            document.getElementById('in-prefix').value = status.prefix;
+        async function loadStatus() {
+            const res = await fetch('/api/status');
+            const d = await res.json();
+            document.getElementById('owner-num').innerText = '+' + d.owner;
+            document.getElementById('set-name').value = d.botName;
+            document.getElementById('set-prefix').value = d.prefix;
+        }
 
-            const features = await fetch('/api/features').then(r => r.json());
-            const fList = document.getElementById('feature-list');
-            fList.innerHTML = features.map(f => `
-                <div class="card flex justify-between items-center mb-2">
+        async function loadFeatures() {
+            const res = await fetch('/api/features');
+            const list = await res.json();
+            const container = document.getElementById('feature-list');
+            container.innerHTML = list.map(f => `
+                <div class="glass p-4 rounded-2xl flex items-center justify-between">
                     <div>
                         <p class="font-bold">${f.name}</p>
-                        <p class="text-[10px] text-gray-500">${f.category.toUpperCase()}</p>
+                        <p class="text-[10px] text-gray-500 uppercase">${f.category}</p>
                     </div>
-                    <input type="checkbox" ${f.status ? 'checked' : ''} onchange="toggleFeature('${f.category}', '${f.id}', this.checked)">
+                    <button onclick="toggleFeature('${f.category}', '${f.id}', ${!f.status})" class="w-12 h-6 rounded-full transition-all ${f.status ? 'bg-purple-600' : 'bg-gray-700'} relative">
+                        <div class="w-4 h-4 bg-white rounded-full absolute top-1 transition-all ${f.status ? 'right-1' : 'left-1'}"></div>
+                    </button>
                 </div>
             `).join('');
-
-            const analytics = await fetch('/api/analytics').then(r => r.json());
-            document.getElementById('total-exec').innerText = analytics.totalExecuted;
-            document.getElementById('fail-count').innerText = analytics.failed;
-            document.getElementById('top-cmds').innerHTML = analytics.mostUsed.map(c => `<div class="flex justify-between"><span>!${c.name}</span><span class="text-gray-500">${c.count}</span></div>`).join('');
-        }
-
-        async function updateConfig() {
-            const body = {
-                name: document.getElementById('in-name').value,
-                prefix: document.getElementById('in-prefix').value,
-                thumbnail: document.getElementById('in-image').value
-            };
-            await fetch('/api/update-config', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify(body) });
-            alert('Success: Bot Identity Updated');
         }
 
         async function toggleFeature(category, id, status) {
-            await fetch('/api/toggle-feature', { method: 'POST', headers: {'Content-Type': 'application/json'}, body: JSON.stringify({ category, id, status }) });
+            await fetch('/api/toggle-feature', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ category, id, status })
+            });
+            loadFeatures();
         }
 
-        async function searchCmds() {
-            const query = document.getElementById('cmd-search').value.toLowerCase();
-            const cmds = await fetch('/api/commands').then(r => r.json());
-            const filtered = cmds.filter(c => c.name.includes(query) || c.category.includes(query));
-            document.getElementById('cmd-list').innerHTML = filtered.map(c => `
-                <div class="bg-[#16121d] p-3 rounded-lg">
-                    <p class="font-bold text-[#9747FF]">!${c.name}</p>
-                    <p class="text-xs text-gray-400">${c.description}</p>
-                    <p class="text-[9px] font-mono text-gray-600 mt-1 uppercase">${c.category}</p>
+        async function loadCommands() {
+            const res = await fetch('/api/commands');
+            const data = await res.json();
+            window.allCommands = data;
+            renderCommands(data);
+        }
+
+        function renderCommands(list) {
+            const container = document.getElementById('command-list');
+            container.innerHTML = list.map(c => `
+                <div class="glass p-4 rounded-2xl">
+                    <p class="text-purple-400 font-bold">!${c.name}</p>
+                    <p class="text-gray-400 text-xs">${c.description}</p>
+                    <p class="text-[10px] text-gray-600 mt-2">ALIASE: ${c.aliases.join(', ') || 'NONE'}</p>
                 </div>
             `).join('');
         }
 
-        setInterval(refreshData, 5000);
-        refreshData();
-        searchCmds();
+        function searchCommands() {
+            const q = document.getElementById('search-box').value.toLowerCase();
+            const filtered = window.allCommands.filter(c => 
+                c.name.toLowerCase().includes(q) || 
+                c.aliases.some(a => a.toLowerCase().includes(q))
+            );
+            renderCommands(filtered);
+        }
+
+        async function loadAnalytics() {
+            const res = await fetch('/api/analytics');
+            const d = await res.json();
+            document.getElementById('total-exec').innerText = d.totalExecuted;
+            document.getElementById('failed-count').innerText = d.failed;
+            
+            const container = document.getElementById('most-used');
+            container.innerHTML = d.mostUsed.map(m => `
+                <div class="flex items-center justify-between p-2">
+                    <span class="text-sm">!${m.name}</span>
+                    <span class="text-gray-500 font-mono text-xs">${m.count} uses</span>
+                </div>
+            `).join('');
+        }
+
+        async function updateConfig() {
+            const name = document.getElementById('set-name').value;
+            const prefix = document.getElementById('set-prefix').value;
+            const thumbnail = document.getElementById('set-pic').value;
+            
+            await fetch('/api/update-config', {
+                method: 'POST',
+                headers: {'Content-Type': 'application/json'},
+                body: JSON.stringify({ name, prefix, thumbnail })
+            });
+            alert('Settings Saved Successfully');
+        }
+
+        // Init
+        loadStatus();
+        loadFeatures();
+        loadCommands();
+        loadAnalytics();
+        setInterval(loadAnalytics, 5000);
     </script>
 </body>
 </html>

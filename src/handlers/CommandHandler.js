@@ -1,6 +1,6 @@
 /**
  * @fileOverview Executes command logic and handles analytics.
- * v1.2.5: Removed intrusive cooldown messages.
+ * v1.2.5: Removed intrusive cooldown messages. SILENT MODE.
  */
 import PermissionMiddleware from '../middleware/PermissionMiddleware.js';
 import CooldownManager from '../managers/CooldownManager.js';
@@ -24,6 +24,7 @@ class CommandHandler {
         (command.cooldown || 1) * 1000
       );
 
+      // SILENT COOLDOWN: No reply sent
       if (remaining) return;
 
       // 3. Track Usage for Dashboard
@@ -38,14 +39,13 @@ class CommandHandler {
       }
       
     } catch (error) {
-      console.log(`\x1b[31m==> ERROR: [${command.name}] execution failed: ${error.message}\x1b[0m`);
+      console.log(`\x1b[31m==> ERROR: [${command.name}] failed: ${error.message}\x1b[0m`);
       
       const failedCount = await this.bot.db.get('stats', 'failed_count') || 0;
       await this.bot.db.set('stats', 'failed_count', failedCount + 1);
 
-      if (!ctx.fromMe) {
-        await ctx.reply(`┌──⌈ ⚠️ ERROR ⌋\n┃ \n┃ Command failed.\n┃ Reason: ${error.message}\n└────────────────`);
-      }
+      // Simple Error Reply
+      await ctx.reply(`┌──⌈ ⚠️ ERROR ⌋\n┃ \n┃ Command failed.\n┃ Reason: ${error.message}\n└────────────────`);
     }
   }
 }

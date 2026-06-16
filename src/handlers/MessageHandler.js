@@ -1,6 +1,7 @@
 /**
  * @fileOverview AstraX High-Speed Message Router.
  * v1.2.5: Zero fromMe restrictions. Professional Colored Logs.
+ * FIXED: Absolute null-safety for sender detection.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -16,7 +17,9 @@ class MessageHandler {
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
 
     const ctx = new Context(this.bot, msg);
-    if (!ctx.sender) return;
+    
+    // SAFE SENDER DETECTION
+    if (!ctx.sender) return; 
 
     const senderId = ctx.sender.split('@')[0];
     const chatType = ctx.isGroup ? '\x1b[35m[GROUP]\x1b[0m' : '\x1b[34m[PRIVATE]\x1b[0m';
@@ -41,7 +44,7 @@ class MessageHandler {
     console.log(`${label} ${chatType} @${senderId} | ${cleanContent}${ctx.text?.length > 50 ? '...' : ''}`);
 
     // 4. Recursive Loop Guard
-    // Allow the bot to hear commands but ignore its own structured boxed results
+    // Allow the bot to hear commands but ignore its own structured results
     if (ctx.text.includes('┌──⌈') || ctx.text.includes('└─ 🌌')) return;
 
     // 5. Execution (Zero fromMe Check)

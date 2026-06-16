@@ -1,12 +1,12 @@
 /**
  * @fileOverview AstraX Master Menu.
- * v1.2.5: High-speed categorization for 475+ modules.
+ * v1.2.5: High-speed categorization for 490+ modules.
  */
 export default {
   name: "help",
   aliases: ["menu", "commands"],
   category: "utility",
-  description: "Display all available commands organized by category.",
+  description: "Show all commands organized by type.",
   usage: "help",
   permissions: 1,
   execute: async (ctx) => {
@@ -33,12 +33,12 @@ export default {
 
     let output = `┌──⌈ 🌌 ASTRAX ⌋
 ┃ User: ${ctx.pushName}
-┃ Unique Modules: ${totalUnique}
-┃ Active Triggers: ${totalTriggers}
+┃ Modules: ${totalUnique}
+┃ Triggers: ${totalTriggers}
 ┃
 `;
 
-    // High-end categorized display
+    // Ordered categories
     const displayOrder = ['admin', 'ai-chat', 'ai-image', 'ai-video', 'ai-music', 'economy', 'downloaders', 'logos', 'reactions', 'tools', 'security', 'utility'];
     
     displayOrder.forEach(cat => {
