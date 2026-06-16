@@ -1,6 +1,6 @@
 /**
  * @fileOverview AstraX High-Speed Message Router.
- * v1.2.5: Zero fromMe restrictions. Expert Colored Logs.
+ * v1.2.5: Zero fromMe restrictions. Professional Colored Logs.
  */
 import Context from '../core/Context.js';
 import CommandHandler from './CommandHandler.js';
@@ -16,7 +16,7 @@ class MessageHandler {
     if (!msg.message || msg.key.remoteJid === 'status@broadcast') return;
 
     const ctx = new Context(this.bot, msg);
-    if (!ctx.sender) return; // FIX: Prevent split of null
+    if (!ctx.sender) return;
 
     const senderId = ctx.sender.split('@')[0];
     const chatType = ctx.isGroup ? '\x1b[35m[GROUP]\x1b[0m' : '\x1b[34m[PRIVATE]\x1b[0m';

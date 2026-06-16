@@ -68,7 +68,7 @@ class Client {
         const myNum = this.sock.user.id.split(':')[0];
         this.bot.isReady = true;
         
-        console.log(`\n\x1b[32m┌──⌈ 🚀 ASTRAX ONLINE ⌋\x1b[0m`);
+        console.log(`\n\x1b[32m┌──⌈ ✅ ASTRAX ONLINE ⌋\x1b[0m`);
         console.log(`\x1b[32m┃ Account: ${this.sock.user.name || 'AstraX'}\x1b[0m`);
         console.log(`\x1b[32m┃ Owner ID: ${myNum}\x1b[0m`);
         console.log(`\x1b[32m┃ Status: 24/7 Active\x1b[0m`);
@@ -91,13 +91,13 @@ class Client {
     const prefix = await this.bot.managers.settings.get('core', 'prefix') || '!';
     const uniqueCount = new Set(this.bot.commands.values()).size;
 
-    const msg = `┌──⌈ 🚀 ASTRAX ⌋
+    const msg = `┌──⌈ ✅ ASTRAX ⌋
 ┃
 ┃ Status: READY
 ┃ Prefix: [ ${prefix} ]
 ┃ Modules: ${uniqueCount}
 ┃ 
-┃ System is now active and 
+┃ AstraX is now active and 
 ┃ listening for commands.
 └────────────────`;
 
