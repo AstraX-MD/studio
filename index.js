@@ -21,7 +21,6 @@ import { initDb, db } from './system/db.js'
 import { logger } from './system/logger.js'
 import { initLoader } from './system/loader.js'
 import { routeMessage, routeEvent } from './system/router.js'
-import { fonts } from './system/fonts.js'
 
 // ─────────────────────────────────────────────
 // NODE VERSION GUARD
@@ -147,15 +146,15 @@ async function sendConnectedMsg(sock) {
 
     const msg = `
 ╭─────〔 ASTRAX CORE 〕─────┈⊷
-│ 𐂂 User: @${owner || 'Not Set'}
-│ 𐂂 Prefix: ${prefix || '#'}
-│ 𐂂 Mode: ${mode?.toUpperCase() || 'PUBLIC'}
-│ 𐂂 Version: ${version || '7.0.0'}
-│ 𐂂 Platform: ${platform || 'whatsapp'}
-│ 𐂂 Speed: ${(Math.random() * 150 + 50).toFixed(4)} ms
-│ 𐂂 Uptime: ${days}d ${hours}h ${mins}m
-│ 𐂂 RAM: ${ramPercent}%
-│ 𐂂 DB: ${db.mode}
+│ ➜ User: @${owner || 'Not Set'}
+│ ➜ Prefix: ${prefix || '#'}
+│ ➜ Mode: ${mode?.toUpperCase() || 'PUBLIC'}
+│ ➜ Version: ${version || '7.0.0'}
+│ ➜ Platform: ${platform || 'whatsapp'}
+│ ➜ Speed: ${(Math.random() * 150 + 50).toFixed(4)} ms
+│ ➜ Uptime: ${days}d ${hours}h ${mins}m
+│ ➜ RAM: ${ramPercent}%
+│ ➜ DB: ${db.mode}
 ╰─────────────────────────⊷
 
 Connected Successfully ✅
@@ -297,15 +296,6 @@ async function startBot() {
 
   sock.ev.on('group-participants.update', async (update) => { await routeEvent(sock, 'group-participants.update', update) })
   sock.ev.on('call', async (calls) => { await routeEvent(sock, 'call', calls) })
-
-  // Hooks for observers (Anti-Delete, Anti-Edit, etc)
-  sock.ev.on('messages.update', async (updates) => {
-    for (const update of updates) {
-      if (update.update.messageStubType === 8) await routeEvent(sock, 'messages.delete', update)
-      if (update.update.message) await routeEvent(sock, 'messages.edit', update)
-    }
-  })
-  sock.ev.on('messages.reaction', async (reactions) => { await routeEvent(sock, 'messages.reaction', reactions) })
 }
 
 process.on('uncaughtException', (err) => {
